@@ -13,14 +13,27 @@ import (
 var DB *pgxpool.Pool
 
 func main() {
-	// 環境変数からホスト名を取得
+	// 環境変数からDB接続情報を取得（デフォルト値あり）
 	host := os.Getenv("DB_HOST")
 	if host == "" {
-		host = "localhost" // デフォルト値
+		host = "localhost"
+	}
+	user := os.Getenv("DB_USER")
+	if user == "" {
+		user = "cellar_app"
+	}
+	password := os.Getenv("DB_PASSWORD") // パスワードが設定されていない場合は空文字列
+	port := os.Getenv("DB_PORT")
+	if port == "" {
+		port = "5432"
+	}
+	dbname := os.Getenv("DB_NAME")
+	if dbname == "" {
+		dbname = "cellar_app"
 	}
 
 	// データベース接続文字列を構築
-	dbURL := "postgres://cellar_app:P1n0tN01r@" + host + ":5432/cellar_app"
+	dbURL := "postgres://" + user + ":" + password + "@" + host + ":" + port + "/" + dbname
 
 	// データベース接続
 	var err error
