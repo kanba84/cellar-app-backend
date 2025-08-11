@@ -52,10 +52,8 @@ docker compose up -d
 cd app
 # Raspberry Pi用にバイナリをビルド
 GOOS=linux GOARCH=arm GOARM=6 go build -o cellar-app
-
-# Raspberry Pi上でサーバーを起動
-./cellar-app
 ```
+Raspberry Pi上でのサービス起動方法については[こちら](./launch-on-raspberry-pi.md)を参照
 
 ### 3. DB初期化
 - `db/init/`配下のスクリプトやダンプファイルを利用
