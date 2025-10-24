@@ -2,12 +2,17 @@
 Raspberry Pi上でGoアプリをサービス化してバックグラウンドで実行する
 
 ## 手順
-### 1. バイナリファイルをホームディレクトリに配置
+### 1. Raspberry Pi用にバイナリをビルド
+```
+GOOS=linux GOARCH=arm GOARM=6 go build -o cellar-app
+```
+### 2. バイナリファイルをホームディレクトリに配置
 ビルドしたバイナリファイルをscpでRaspberry Piに転送
 ```
 scp cellar-app pi@<HOST_IP>:~
 ```
-### 2. ユニットファイル作成
+(注意): バイナリをRaspberry Pi上で実行中の場合は停止してからscpでファイルを転送する  
+### 3. ユニットファイル作成
 `/etc/systemd/system/cellar-app.service`に以下を記載して保存  
 DB_PASSWORDは適宜変更する
 ```
@@ -26,6 +31,8 @@ StandardOutput=append:/var/log/cellar-app.log
 StandardError=append:/var/log/cellar-app.log
 Environment=GIN_MODE=release
 Environment=DB_PASSWORD=<REPLACE_HERE>
+Environment=SSL_CERT_FILE=<REPLACE_HERE>
+Environment=SSL_KEY_FILE=<REPLACE_HERE>
 
 [Install]
 WantedBy=multi-user.target
