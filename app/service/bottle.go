@@ -9,15 +9,15 @@ import (
 
 func (s *Service) ListBottles() ([]model.Bottle, error) {
 	query := `
-        SELECT 
-            b.id, b.wine_id, b.is_opened, b.added_at, b.removed_at, b.row_number, b.column_number, b.note,
-            w.id, w.name, w.vintage, w.wine_type_id, wt.name as wine_type_name, w.country_id, c.name as country_name, w.region_id, r.name as region_name, w.producer
-        FROM bottles b
-        JOIN wines w ON b.wine_id = w.id
-        LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
-        LEFT JOIN countries c ON w.country_id = c.id
-        LEFT JOIN regions r ON w.region_id = r.id
-    `
+		SELECT 
+			b.id, b.wine_id, b.is_opened, b.added_at, b.removed_at, b.row_number, b.column_number, b.note,
+			w.id, w.name, w.vintage, w.wine_type_id, wt.name as wine_type_name, w.country_id, c.name as country_name, c.iso_code as country_iso_code, w.region_id, r.name as region_name, w.producer
+		FROM bottles b
+		JOIN wines w ON b.wine_id = w.id
+		LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
+		LEFT JOIN countries c ON w.country_id = c.id
+		LEFT JOIN regions r ON w.region_id = r.id
+	`
 	rows, err := s.Pool.Query(context.Background(), query)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (s *Service) ListBottles() ([]model.Bottle, error) {
 		// Bottle と Wine のフィールドをスキャン
 		if err := rows.Scan(
 			&bottle.ID, &bottle.WineID, &bottle.IsOpened, &bottle.AddedAt, &bottle.RemovedAt, &bottle.RowNumber, &bottle.ColumnNumber, &bottle.Note,
-			&wine.ID, &wine.Name, &wine.Vintage, &wine.WineTypeID, &wine.WinTypeName, &wine.CountryID, &wine.CountryName, &wine.RegionID, &wine.RegionName, &wine.Producer,
+			&wine.ID, &wine.Name, &wine.Vintage, &wine.WineTypeID, &wine.WinTypeName, &wine.CountryID, &wine.CountryName, &wine.CountryISOCode, &wine.RegionID, &wine.RegionName, &wine.Producer,
 		); err != nil {
 			return nil, err
 		}
@@ -44,23 +44,23 @@ func (s *Service) ListBottles() ([]model.Bottle, error) {
 
 func (s *Service) GetBottle(id int) (*model.Bottle, error) {
 	query := `
-        SELECT 
-            b.id, b.wine_id, b.is_opened, b.added_at, b.removed_at, b.row_number, b.column_number, b.note,
-            w.id, w.name, w.vintage, w.wine_type_id, wt.name as wine_type_name, w.country_id, c.name as country_name, w.region_id, r.name as region_name, w.producer
-        FROM bottles b
-        JOIN wines w ON b.wine_id = w.id
-        LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
-        LEFT JOIN countries c ON w.country_id = c.id
-        LEFT JOIN regions r ON w.region_id = r.id
-        WHERE b.id = $1
-    `
+		SELECT 
+			b.id, b.wine_id, b.is_opened, b.added_at, b.removed_at, b.row_number, b.column_number, b.note,
+			w.id, w.name, w.vintage, w.wine_type_id, wt.name as wine_type_name, w.country_id, c.name as country_name, c.iso_code as country_iso_code, w.region_id, r.name as region_name, w.producer
+		FROM bottles b
+		JOIN wines w ON b.wine_id = w.id
+		LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
+		LEFT JOIN countries c ON w.country_id = c.id
+		LEFT JOIN regions r ON w.region_id = r.id
+		WHERE b.id = $1
+	`
 	row := s.Pool.QueryRow(context.Background(), query, id)
 
 	var bottle model.Bottle
 	var wine model.WineDTO
 	if err := row.Scan(
 		&bottle.ID, &bottle.WineID, &bottle.IsOpened, &bottle.AddedAt, &bottle.RemovedAt, &bottle.RowNumber, &bottle.ColumnNumber, &bottle.Note,
-		&wine.ID, &wine.Name, &wine.Vintage, &wine.WineTypeID, &wine.WinTypeName, &wine.CountryID, &wine.CountryName, &wine.RegionID, &wine.RegionName, &wine.Producer,
+		&wine.ID, &wine.Name, &wine.Vintage, &wine.WineTypeID, &wine.WinTypeName, &wine.CountryID, &wine.CountryName, &wine.CountryISOCode, &wine.RegionID, &wine.RegionName, &wine.Producer,
 	); err != nil {
 		return nil, err
 	}

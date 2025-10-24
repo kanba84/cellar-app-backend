@@ -7,7 +7,7 @@ import (
 )
 
 func (s *Service) ListCountries() ([]model.Country, error) {
-	rows, err := s.Pool.Query(context.Background(), `SELECT id, name FROM countries ORDER BY id`)
+	rows, err := s.Pool.Query(context.Background(), `SELECT id, name, iso_code FROM countries ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +16,7 @@ func (s *Service) ListCountries() ([]model.Country, error) {
 	countries := []model.Country{}
 	for rows.Next() {
 		var c model.Country
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.ISOCode); err != nil {
 			return nil, err
 		}
 		countries = append(countries, c)
@@ -25,9 +25,9 @@ func (s *Service) ListCountries() ([]model.Country, error) {
 }
 
 func (s *Service) GetCountry(id int) (*model.Country, error) {
-	row := s.Pool.QueryRow(context.Background(), `SELECT id, name FROM countries WHERE id = $1`, id)
+	row := s.Pool.QueryRow(context.Background(), `SELECT id, name, iso_code FROM countries WHERE id = $1`, id)
 	var c model.Country
-	if err := row.Scan(&c.ID, &c.Name); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.ISOCode); err != nil {
 		return nil, err
 	}
 	return &c, nil
@@ -35,7 +35,7 @@ func (s *Service) GetCountry(id int) (*model.Country, error) {
 
 func (s *Service) CreateCountry(country *model.Country) error {
 	err := s.Pool.QueryRow(context.Background(),
-		`INSERT INTO countries (name) VALUES ($1) RETURNING id`, country.Name).Scan(&country.ID)
+		`INSERT INTO countries (name, iso_code) VALUES ($1, $2) RETURNING id`, country.Name, country.ISOCode).Scan(&country.ID)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ type Wine struct {
 	RegionID      *int    `json:"region_id"`
 	Producer      *string `json:"producer"`
 	AppellationID *int    `json:"appellation_id"`
+	LabelImageURL *string `json:"label_image_url"`
 }
 
 // WineDTOは、APIレスポンス用のWineデータを表す構造体です。
@@ -20,6 +21,7 @@ type WineDTO struct {
 	Name                string  `json:"name"`
 	CountryID           int     `json:"country_id"`
 	CountryName         string  `json:"country_name"`
+	CountryISOCode      string  `json:"country_iso_code"`
 	WineTypeID          int     `json:"wine_type_id"`
 	WinTypeName         string  `json:"wine_type_name"`
 	Vintage             *int    `json:"vintage"`
@@ -30,6 +32,7 @@ type WineDTO struct {
 	AppellationName     *string `json:"appellation_name"`
 	DesignationTypeID   *int    `json:"designation_type_id"`
 	DesignationTypeName *string `json:"designation_type_name"`
+	LabelImageURL       *string `json:"label_image_url"`
 }
 
 type Bottle struct {
@@ -50,8 +53,9 @@ type WineType struct {
 }
 
 type Country struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	ISOCode string `json:"iso_code"` // ISO 3166-1 alpha-2 コード
 }
 
 type Region struct {

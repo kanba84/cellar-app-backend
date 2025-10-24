@@ -4,6 +4,7 @@ import (
 	"cellar-app/handler"
 	"cellar-app/service"
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -47,7 +48,24 @@ func main() {
 	svc := &service.Service{Pool: dbPool}
 	h := &handler.Handler{Service: svc}
 	r := SetupRouter(h)
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("サーバーの起動に失敗しました: %v", err)
+
+	// SSL証明書・鍵のパス
+	certFile := os.Getenv("SSL_CERT_FILE")
+	keyFile := os.Getenv("SSL_KEY_FILE")
+	fmt.Println("certFile:", certFile, "keyFile:", keyFile)
+	if certFile != "" && keyFile != "" {
+		// HTTPSでサーバー起動
+		fmt.Println("HTTPS server starting on port 8443")
+		log.Println("HTTPS server starting on port 8443")
+		if err := r.RunTLS(":8443", certFile, keyFile); err != nil {
+			log.Fatalf("failed to starting the server: %v", err)
+		}
+	} else {
+		// HTTPでサーバー起動
+		log.Println("HTTP server starting on port 8080")
+		fmt.Println("HTTP server starting on port 8080")
+		if err := r.Run(":8080"); err != nil {
+			log.Fatalf("failed to starting the server: %v", err)
+		}
 	}
 }

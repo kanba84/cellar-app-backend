@@ -13,7 +13,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
             w.wine_type_id, wt.name AS wine_type_name, 
             w.country_id, c.name AS country_name, 
             w.region_id, r.name AS region_name, 
-            w.producer,
+            w.producer, w.label_image_url,
             w.appellation_id, a.name AS appellation_name,
             a.designation_type_id, dt.name AS designation_type_name
         FROM wines w
@@ -38,7 +38,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 			&w.WineTypeID, &w.WinTypeName,
 			&w.CountryID, &w.CountryName,
 			&w.RegionID, &w.RegionName,
-			&w.Producer,
+			&w.Producer, &w.LabelImageURL,
 			&w.AppellationID, &w.AppellationName,
 			&w.DesignationTypeID, &w.DesignationTypeName,
 		); err != nil {
@@ -56,7 +56,7 @@ func (s *Service) GetWine(id int) (*model.WineDTO, error) {
             w.wine_type_id, wt.name AS wine_type_name, 
             w.country_id, c.name AS country_name, 
             w.region_id, r.name AS region_name, 
-            w.producer,
+            w.producer, w.label_image_url,
             w.appellation_id, a.name AS appellation_name,
             a.designation_type_id, dt.name AS designation_type_name
         FROM wines w
@@ -74,7 +74,7 @@ func (s *Service) GetWine(id int) (*model.WineDTO, error) {
 		&w.WineTypeID, &w.WinTypeName,
 		&w.CountryID, &w.CountryName,
 		&w.RegionID, &w.RegionName,
-		&w.Producer,
+		&w.Producer, &w.LabelImageURL,
 		&w.AppellationID, &w.AppellationName,
 		&w.DesignationTypeID, &w.DesignationTypeName,
 	); err != nil {
@@ -127,7 +127,24 @@ func (s *Service) CreateWine(wine *model.Wine) error {
 		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
 		i++
 	}
-
+	if wine.LabelImageURL != nil {
+		columns = append(columns, "label_image_url")
+		values = append(values, wine.LabelImageURL)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		i++
+	} else if wine.WineTypeID == 1 { // 赤ワインの場合、デフォルトのラベル画像URLを設定
+		defaultURL := "https://192.168.11.26/labels/sample_thumbnail.png"
+		columns = append(columns, "label_image_url")
+		values = append(values, defaultURL)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		i++
+	} else { // 白ワイン/スパークリングの場合、デフォルトのラベル画像その２のURLを設定
+		defaultURL := "https://192.168.11.26/labels/sample_thumbnail2.png"
+		columns = append(columns, "label_image_url")
+		values = append(values, defaultURL)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		i++
+	}
 	sql := fmt.Sprintf(
 		"INSERT INTO wines (%s) VALUES (%s)",
 		join(columns, ", "),
@@ -151,11 +168,16 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 	defer tx.Rollback(ctx)
 
 	var wineID int
+	if req.Wine.WineTypeID == 1 {
+		*req.Wine.LabelImageURL = "https://192.168.11.26/labels/sample_thumbnail.png"
+	} else {
+		*req.Wine.LabelImageURL = "https://192.168.11.26/labels/sample_thumbnail2.png"
+	}
 	err = tx.QueryRow(ctx, `
-        INSERT INTO wines (name, vintage, wine_type_id, country_id, region_id, producer)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO wines (name, vintage, wine_type_id, country_id, region_id, producer, label_image_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
-    `, req.Wine.Name, req.Wine.Vintage, req.Wine.WineTypeID, req.Wine.CountryID, req.Wine.RegionID, req.Wine.Producer).Scan(&wineID)
+    `, req.Wine.Name, req.Wine.Vintage, req.Wine.WineTypeID, req.Wine.CountryID, req.Wine.RegionID, req.Wine.Producer, req.Wine.LabelImageURL).Scan(&wineID)
 	if err != nil {
 		return model.Wine{}, model.Bottle{}, err
 	}
@@ -175,13 +197,14 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 	}
 
 	return model.Wine{
-			ID:         wineID,
-			Name:       req.Wine.Name,
-			Vintage:    req.Wine.Vintage,
-			WineTypeID: req.Wine.WineTypeID,
-			CountryID:  req.Wine.CountryID,
-			RegionID:   req.Wine.RegionID,
-			Producer:   req.Wine.Producer,
+			ID:            wineID,
+			Name:          req.Wine.Name,
+			Vintage:       req.Wine.Vintage,
+			WineTypeID:    req.Wine.WineTypeID,
+			CountryID:     req.Wine.CountryID,
+			RegionID:      req.Wine.RegionID,
+			Producer:      req.Wine.Producer,
+			LabelImageURL: req.Wine.LabelImageURL,
 		}, model.Bottle{
 			ID:           bottleID,
 			WineID:       wineID,
