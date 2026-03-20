@@ -23,6 +23,8 @@ func (r *BottleRepository) List() ([]model.Bottle, error) {
 		Preload("Wine.WineType").
 		Preload("Wine.Country").
 		Preload("Wine.Region").
+		Preload("Wine.Appellation").
+		Preload("Wine.Appellation.DesignationType").
 		Find(&bottles).Error
 
 	return bottles, err
@@ -36,6 +38,8 @@ func (r *BottleRepository) GetByID(id uint) (*model.Bottle, error) {
 		Preload("Wine.WineType").
 		Preload("Wine.Country").
 		Preload("Wine.Region").
+		Preload("Wine.Appellation").
+		Preload("Wine.Appellation.DesignationType").
 		First(&bottle, id).Error
 
 	if err != nil {
