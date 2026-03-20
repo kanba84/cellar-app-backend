@@ -19,11 +19,12 @@ func (h *Handler) ListDesignationTypes(c *gin.Context) {
 }
 
 func (h *Handler) GetDesignationType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	designationType, err := h.Service.GetDesignationType(id)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -50,11 +51,12 @@ func (h *Handler) CreateDesignationType(c *gin.Context) {
 }
 
 func (h *Handler) UpdateDesignationType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id: " + err.Error()})
 		return
 	}
+	id := uint(id64)
 	var designationType model.DesignationType
 	if err := c.ShouldBindJSON(&designationType); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
@@ -69,11 +71,12 @@ func (h *Handler) UpdateDesignationType(c *gin.Context) {
 }
 
 func (h *Handler) DeleteDesignationType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteDesignationType(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete designation type"})
 		return

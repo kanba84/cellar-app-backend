@@ -19,11 +19,12 @@ func (h *Handler) ListAppellations(c *gin.Context) {
 }
 
 func (h *Handler) GetAppellation(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	appellation, err := h.Service.GetAppellation(id)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -50,11 +51,12 @@ func (h *Handler) CreateAppellation(c *gin.Context) {
 }
 
 func (h *Handler) UpdateAppellation(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id: " + err.Error()})
 		return
 	}
+	id := uint(id64)
 	var appellation model.Appellation
 	if err := c.ShouldBindJSON(&appellation); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
@@ -69,11 +71,12 @@ func (h *Handler) UpdateAppellation(c *gin.Context) {
 }
 
 func (h *Handler) DeleteAppellation(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteAppellation(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete appellation"})
 		return

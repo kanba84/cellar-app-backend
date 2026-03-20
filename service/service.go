@@ -1,9 +1,29 @@
 package service
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
+	"cellar-app/repository"
+
+	"gorm.io/gorm"
 )
 
 type Service struct {
-	Pool *pgxpool.Pool
+	WineRepo            *repository.WineRepository
+	AppellationRepo     *repository.AppellationRepository
+	BottleRepo          *repository.BottleRepository
+	CountryRepo         *repository.CountryRepository
+	RegionRepo          *repository.RegionRepository
+	WineTypeRepo        *repository.WineTypeRepository
+	DesignationTypeRepo *repository.DesignationTypeRepository
+}
+
+func NewService(db *gorm.DB) *Service {
+	return &Service{
+		WineRepo:            repository.NewWineRepository(db),
+		AppellationRepo:     repository.NewAppellationRepository(db),
+		BottleRepo:          repository.NewBottleRepository(db),
+		CountryRepo:         repository.NewCountryRepository(db),
+		RegionRepo:          repository.NewRegionRepository(db),
+		WineTypeRepo:        repository.NewWineTypeRepository(db),
+		DesignationTypeRepo: repository.NewDesignationTypeRepository(db),
+	}
 }

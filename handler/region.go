@@ -21,11 +21,12 @@ func (h *Handler) ListRegions(c *gin.Context) {
 
 // GetRegion handles GET /regions/:id
 func (h *Handler) GetRegion(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	region, err := h.Service.GetRegion(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -51,11 +52,12 @@ func (h *Handler) CreateRegion(c *gin.Context) {
 
 // UpdateRegion handles PUT /regions/:id
 func (h *Handler) UpdateRegion(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	var req model.Region
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -72,11 +74,12 @@ func (h *Handler) UpdateRegion(c *gin.Context) {
 
 // DeleteRegion handles DELETE /regions/:id
 func (h *Handler) DeleteRegion(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteRegion(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

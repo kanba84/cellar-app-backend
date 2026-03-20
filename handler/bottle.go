@@ -20,12 +20,13 @@ func (h *Handler) ListBottles(c *gin.Context) {
 }
 
 func (h *Handler) GetBottle(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		fmt.Println("[GetBottle] invalid id:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	bottle, err := h.Service.GetBottle(id)
 	if err != nil {
 		fmt.Println("[GetBottle] error:", err)
@@ -73,12 +74,13 @@ func validateCreateBottleRequest(bottle model.Bottle, ignoreId bool) error {
 }
 
 func (h *Handler) UpdateBottle(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		fmt.Println("[UpdateBottle] invalid id:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id: " + err.Error()})
 		return
 	}
+	id := uint(id64)
 	var bottle model.Bottle
 	if err := c.ShouldBindJSON(&bottle); err != nil {
 		fmt.Println("[UpdateBottle] bind error:", err)
@@ -95,12 +97,13 @@ func (h *Handler) UpdateBottle(c *gin.Context) {
 }
 
 func (h *Handler) PatchBottle(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		fmt.Println("[PatchBottle] invalid id:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id: " + err.Error()})
 		return
 	}
+	id := uint(id64)
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
@@ -116,12 +119,13 @@ func (h *Handler) PatchBottle(c *gin.Context) {
 }
 
 func (h *Handler) DeleteBottle(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		fmt.Println("[DeleteBottle] invalid id:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteBottle(id); err != nil {
 		fmt.Println("[DeleteBottle] service error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete bottle"})

@@ -18,12 +18,12 @@ func (h *Handler) ListWineTypes(c *gin.Context) {
 }
 
 func (h *Handler) GetWineType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-
+	id := uint(id64)
 	wineType, err := h.Service.GetWineType(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "wine type not found"})
@@ -47,11 +47,12 @@ func (h *Handler) CreateWineType(c *gin.Context) {
 }
 
 func (h *Handler) UpdateWineType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	var req model.WineType
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -67,11 +68,12 @@ func (h *Handler) UpdateWineType(c *gin.Context) {
 }
 
 func (h *Handler) DeleteWineType(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteWineType(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete wine type"})
 		return

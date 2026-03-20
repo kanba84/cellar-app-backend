@@ -2,71 +2,53 @@ package service
 
 import (
 	"cellar-app/model"
-	"context"
 	"fmt"
 )
 
 func (s *Service) ListRegions() ([]model.Region, error) {
-	rows, err := s.Pool.Query(context.Background(), `SELECT id, name, country_id, parent_id FROM regions ORDER BY id`)
+	regions, err := s.RegionRepo.List()
 	if err != nil {
+		fmt.Printf("Error listing regions: %v\n", err)
 		return nil, err
-	}
-	defer rows.Close()
-
-	regions := []model.Region{}
-	for rows.Next() {
-		var r model.Region
-		if err := rows.Scan(&r.ID, &r.Name, &r.CountryID, &r.ParentID); err != nil {
-			return nil, err
-		}
-		regions = append(regions, r)
 	}
 	return regions, nil
 }
 
-func (s *Service) GetRegion(id int) (*model.Region, error) {
-	row := s.Pool.QueryRow(context.Background(), `SELECT id, name, country_id FROM regions WHERE id = $1`, id)
-	var r model.Region
-	if err := row.Scan(&r.ID, &r.Name, &r.CountryID); err != nil {
+func (s *Service) GetRegion(id uint) (*model.Region, error) {
+	region, err := s.RegionRepo.GetByID(id)
+	if err != nil {
+		fmt.Printf("Error retrieving region with ID %d: %v\n", id, err)
 		return nil, err
 	}
-	return &r, nil
+	return region, nil
 }
 
 func (s *Service) CreateRegion(region *model.Region) error {
-	var (
-		sql  string
-		args []interface{}
-	)
-	if region.ParentID != nil {
-		sql = `INSERT INTO regions (name, country_id, parent_id) VALUES ($1, $2, $3) RETURNING id`
-		args = []interface{}{region.Name, region.CountryID, region.ParentID}
-	} else {
-		sql = `INSERT INTO regions (name, country_id, parent_id) VALUES ($1, $2, NULL) RETURNING id`
-		args = []interface{}{region.Name, region.CountryID}
-	}
-	return s.Pool.QueryRow(context.Background(), sql, args...).Scan(&region.ID)
-}
-
-func (s *Service) UpdateRegion(region *model.Region) error {
-	cmd, err := s.Pool.Exec(context.Background(),
-		`UPDATE regions SET name = $1, country_id = $2 WHERE id = $3`, region.Name, region.CountryID, region.ID)
+	err := s.RegionRepo.Create(region)
 	if err != nil {
+		fmt.Printf("Error creating region: %v\n", err)
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("not found")
-	}
+	fmt.Printf("Region created: %+v\n", region)
 	return nil
 }
 
-func (s *Service) DeleteRegion(id int) error {
-	cmd, err := s.Pool.Exec(context.Background(), `DELETE FROM regions WHERE id = $1`, id)
+func (s *Service) UpdateRegion(region *model.Region) error {
+	err := s.RegionRepo.Update(region)
 	if err != nil {
+		fmt.Printf("Error updating region with ID %d: %v\n", region.ID, err)
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("not found")
+	fmt.Printf("Region updated: %+v\n", region)
+	return nil
+}
+
+func (s *Service) DeleteRegion(id uint) error {
+	err := s.RegionRepo.Delete(id)
+	if err != nil {
+		fmt.Printf("Error deleting region with ID %d: %v\n", id, err)
+		return err
 	}
+	fmt.Printf("Region with ID %d deleted\n", id)
 	return nil
 }
