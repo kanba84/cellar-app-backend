@@ -51,6 +51,18 @@ type Bottle struct {
 	Note         *string    `gorm:"size:512" json:"note"`
 }
 
+type BottleWithWineDTO struct {
+	ID           int        `json:"id"`
+	IsOpened     bool       `json:"is_opened"`
+	AddedAt      *time.Time `json:"added_at"`
+	RemovedAt    *time.Time `json:"removed_at"`
+	RowNumber    *int       `json:"row_number"`
+	ColumnNumber *int       `json:"column_number"`
+	Note         *string    `json:"note"`
+
+	Wine WineDTO `json:"wine"`
+}
+
 type WineType struct {
 	ID   uint   `gorm:"primaryKey" json:"id"`
 	Name string `gorm:"size:255;not null" json:"name"`

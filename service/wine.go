@@ -41,8 +41,9 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 			AppellationID: appellationID,
 
 			// ★ ここは基本そのままでOK（Preload前提）
-			WinTypeName: w.WineType.Name,
-			CountryName: w.Country.Name,
+			WinTypeName:    w.WineType.Name,
+			CountryName:    w.Country.Name,
+			CountryISOCode: w.Country.ISOCode,
 		}
 
 		// --- nullable系だけチェック ---
@@ -129,15 +130,16 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 // convertWineToDTO: Wine構造体をWineDTO構造体に変換
 func convertWineToDTO(wine *model.Wine) model.WineDTO {
 	dto := model.WineDTO{
-		ID:            int(wine.ID),
-		Name:          wine.Name,
-		Vintage:       wine.Vintage,
-		WineTypeID:    int(wine.WineTypeID),
-		CountryID:     int(wine.CountryID),
-		Producer:      wine.Producer,
-		LabelImageURL: wine.LabelImageURL,
-		WinTypeName:   wine.WineType.Name,
-		CountryName:   wine.Country.Name,
+		ID:             int(wine.ID),
+		Name:           wine.Name,
+		Vintage:        wine.Vintage,
+		WineTypeID:     int(wine.WineTypeID),
+		CountryID:      int(wine.CountryID),
+		Producer:       wine.Producer,
+		LabelImageURL:  wine.LabelImageURL,
+		WinTypeName:    wine.WineType.Name,
+		CountryName:    wine.Country.Name,
+		CountryISOCode: wine.Country.ISOCode,
 	}
 
 	if wine.RegionID != nil {
