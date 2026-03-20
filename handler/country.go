@@ -20,11 +20,12 @@ func (h *Handler) ListCountries(c *gin.Context) {
 
 // GetCountry handles GET /countries/:id
 func (h *Handler) GetCountry(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid country ID"})
 		return
 	}
+	id := uint(id64)
 	country, err := h.Service.GetCountry(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Country not found"})
@@ -49,11 +50,12 @@ func (h *Handler) CreateCountry(c *gin.Context) {
 
 // UpdateCountry handles PUT /countries/:id
 func (h *Handler) UpdateCountry(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid country ID"})
 		return
 	}
+	id := uint(id64)
 	var country model.Country
 	if err := c.ShouldBindJSON(&country); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -69,11 +71,12 @@ func (h *Handler) UpdateCountry(c *gin.Context) {
 
 // DeleteCountry handles DELETE /countries/:id
 func (h *Handler) DeleteCountry(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid country ID"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteCountry(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete country"})
 		return

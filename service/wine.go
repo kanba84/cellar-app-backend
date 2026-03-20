@@ -7,82 +7,76 @@ import (
 )
 
 func (s *Service) ListWines() ([]model.WineDTO, error) {
-	rows, err := s.Pool.Query(context.Background(), `
-        SELECT 
-            w.id, w.name, w.vintage, 
-            w.wine_type_id, wt.name AS wine_type_name, 
-            w.country_id, c.name AS country_name, 
-            w.region_id, r.name AS region_name, 
-            w.producer, w.label_image_url,
-            w.appellation_id, a.name AS appellation_name,
-            a.designation_type_id, dt.name AS designation_type_name
-        FROM wines w
-        LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
-        LEFT JOIN countries c ON w.country_id = c.id
-        LEFT JOIN regions r ON w.region_id = r.id
-        LEFT JOIN appellations a ON w.appellation_id = a.id
-        LEFT JOIN designation_types dt ON a.designation_type_id = dt.id
-		`)
+	wines, err := s.WineRepo.List()
 	if err != nil {
-		fmt.Printf("Error querying wines: %v\n", err)
 		return nil, err
 	}
-	defer rows.Close()
 
-	wines := []model.WineDTO{}
-	for rows.Next() {
-		var w model.WineDTO
+	var result []model.WineDTO
 
-		if err := rows.Scan(
-			&w.ID, &w.Name, &w.Vintage,
-			&w.WineTypeID, &w.WinTypeName,
-			&w.CountryID, &w.CountryName,
-			&w.RegionID, &w.RegionName,
-			&w.Producer, &w.LabelImageURL,
-			&w.AppellationID, &w.AppellationName,
-			&w.DesignationTypeID, &w.DesignationTypeName,
-		); err != nil {
-			return nil, err
+	for _, w := range wines {
+
+		// --- ポインタ変換 ---
+		var regionID *int
+		if w.RegionID != nil {
+			v := int(*w.RegionID)
+			regionID = &v
 		}
-		wines = append(wines, w)
+
+		var appellationID *int
+		if w.AppellationID != nil {
+			v := int(*w.AppellationID)
+			appellationID = &v
+		}
+
+		dto := model.WineDTO{
+			ID:            int(w.ID),
+			Name:          w.Name,
+			Vintage:       w.Vintage,
+			WineTypeID:    int(w.WineTypeID),
+			CountryID:     int(w.CountryID),
+			RegionID:      regionID,
+			Producer:      w.Producer,
+			LabelImageURL: w.LabelImageURL,
+			AppellationID: appellationID,
+
+			// ★ ここは基本そのままでOK（Preload前提）
+			WinTypeName: w.WineType.Name,
+			CountryName: w.Country.Name,
+		}
+
+		// --- nullable系だけチェック ---
+		if w.Region != nil {
+			dto.RegionName = &w.Region.Name
+		}
+
+		if w.Appellation != nil {
+			dto.AppellationName = &w.Appellation.Name
+
+			if w.Appellation.DesignationType != nil {
+				// ★ ポインタ型に合わせる
+				id := int(w.Appellation.DesignationType.ID)
+				dto.DesignationTypeID = &id
+				dto.DesignationTypeName = &w.Appellation.DesignationType.Name
+			}
+		}
+
+		result = append(result, dto)
 	}
-	return wines, nil
+
+	return result, nil
 }
 
-func (s *Service) GetWine(id int) (*model.WineDTO, error) {
-	row := s.Pool.QueryRow(context.Background(), `
-        SELECT 
-            w.id, w.name, w.vintage, 
-            w.wine_type_id, wt.name AS wine_type_name, 
-            w.country_id, c.name AS country_name, 
-            w.region_id, r.name AS region_name, 
-            w.producer, w.label_image_url,
-            w.appellation_id, a.name AS appellation_name,
-            a.designation_type_id, dt.name AS designation_type_name
-        FROM wines w
-        LEFT JOIN wine_types wt ON w.wine_type_id = wt.id
-        LEFT JOIN countries c ON w.country_id = c.id
-        LEFT JOIN regions r ON w.region_id = r.id
-        LEFT JOIN appellations a ON w.appellation_id = a.id
-        LEFT JOIN designation_types dt ON a.designation_type_id = dt.id
-        WHERE w.id = $1
-    `, id)
-	var w model.WineDTO
-
-	if err := row.Scan(
-		&w.ID, &w.Name, &w.Vintage,
-		&w.WineTypeID, &w.WinTypeName,
-		&w.CountryID, &w.CountryName,
-		&w.RegionID, &w.RegionName,
-		&w.Producer, &w.LabelImageURL,
-		&w.AppellationID, &w.AppellationName,
-		&w.DesignationTypeID, &w.DesignationTypeName,
-	); err != nil {
+func (s *Service) GetWine(id uint) (*model.WineDTO, error) {
+	wine, err := s.WineRepo.GetByID(id)
+	if err != nil {
 		fmt.Printf("Error retrieving wine with ID %d: %v\n", id, err)
 		return nil, err
 	}
 
-	return &w, nil
+	// WineをWineDTOに変換
+	dto := convertWineToDTO(wine)
+	return &dto, nil
 }
 
 func (s *Service) CreateWine(wine *model.Wine) error {
@@ -91,67 +85,18 @@ func (s *Service) CreateWine(wine *model.Wine) error {
 		return fmt.Errorf("name and country_id are required")
 	}
 
-	// 可変長のカラムと値を構築
-	columns := []string{"name", "country_id"}
-	values := []interface{}{wine.Name, wine.CountryID}
-	placeholders := []string{"$1", "$2"}
-	i := 3
+	// ラベル画像URLが未設定の場合、デフォルト値を設定
+	if wine.LabelImageURL == nil {
+		if wine.WineTypeID == 1 { // 赤ワインの場合
+			defaultURL := "https://cellar-app.local/labels/sample_thumbnail.png"
+			wine.LabelImageURL = &defaultURL
+		} else { // 白ワイン/スパークリングの場合
+			defaultURL := "https://cellar-app.local/labels/sample_thumbnail2.png"
+			wine.LabelImageURL = &defaultURL
+		}
+	}
 
-	if wine.Vintage != nil {
-		columns = append(columns, "vintage")
-		values = append(values, wine.Vintage)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	if wine.WineTypeID != 0 {
-		columns = append(columns, "wine_type_id")
-		values = append(values, wine.WineTypeID)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	if wine.RegionID != nil {
-		columns = append(columns, "region_id")
-		values = append(values, wine.RegionID)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	if wine.Producer != nil {
-		columns = append(columns, "producer")
-		values = append(values, wine.Producer)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	if wine.AppellationID != nil {
-		columns = append(columns, "appellation_id")
-		values = append(values, wine.AppellationID)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	if wine.LabelImageURL != nil {
-		columns = append(columns, "label_image_url")
-		values = append(values, wine.LabelImageURL)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	} else if wine.WineTypeID == 1 { // 赤ワインの場合、デフォルトのラベル画像URLを設定
-		defaultURL := "https://cellar-app.local/labels/sample_thumbnail.png"
-		columns = append(columns, "label_image_url")
-		values = append(values, defaultURL)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	} else { // 白ワイン/スパークリングの場合、デフォルトのラベル画像その２のURLを設定
-		defaultURL := "https://cellar-app.local/labels/sample_thumbnail2.png"
-		columns = append(columns, "label_image_url")
-		values = append(values, defaultURL)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		i++
-	}
-	sql := fmt.Sprintf(
-		"INSERT INTO wines (%s) VALUES (%s)",
-		join(columns, ", "),
-		join(placeholders, ", "),
-	)
-
-	_, err := s.Pool.Exec(context.Background(), sql, values...)
+	err := s.WineRepo.Create(wine)
 	if err != nil {
 		fmt.Printf("Error creating wine: %v\n", err)
 		return err
@@ -161,73 +106,67 @@ func (s *Service) CreateWine(wine *model.Wine) error {
 }
 
 func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWineWithBottleRequest) (model.Wine, model.Bottle, error) {
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return model.Wine{}, model.Bottle{}, err
+	// ラベル画像URLが未設定の場合、デフォルト値を設定
+	if req.Wine.LabelImageURL == nil {
+		if req.Wine.WineTypeID == 1 {
+			defaultURL := "https://cellar-app.local/labels/sample_thumbnail.png"
+			req.Wine.LabelImageURL = &defaultURL
+		} else {
+			defaultURL := "https://cellar-app.local/labels/sample_thumbnail2.png"
+			req.Wine.LabelImageURL = &defaultURL
+		}
 	}
-	defer tx.Rollback(ctx)
 
-	var wineID int
-	if req.Wine.WineTypeID == 1 {
-		*req.Wine.LabelImageURL = "https://cellar-app.local/labels/sample_thumbnail.png"
-	} else {
-		*req.Wine.LabelImageURL = "https://cellar-app.local/labels/sample_thumbnail2.png"
-	}
-	err = tx.QueryRow(ctx, `
-        INSERT INTO wines (name, vintage, wine_type_id, country_id, region_id, producer, label_image_url)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-    `, req.Wine.Name, req.Wine.Vintage, req.Wine.WineTypeID, req.Wine.CountryID, req.Wine.RegionID, req.Wine.Producer, req.Wine.LabelImageURL).Scan(&wineID)
+	wine, bottle, err := s.WineRepo.CreateWithBottle(ctx, &req.Wine, &req.Bottle)
 	if err != nil {
 		return model.Wine{}, model.Bottle{}, err
 	}
 
-	var bottleID int
-	err = tx.QueryRow(ctx, `
-        INSERT INTO bottles (wine_id, row_number, column_number, note)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id
-    `, wineID, req.Bottle.RowNumber, req.Bottle.ColumnNumber, req.Bottle.Note).Scan(&bottleID)
-	if err != nil {
-		return model.Wine{}, model.Bottle{}, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return model.Wine{}, model.Bottle{}, err
-	}
-
-	return model.Wine{
-			ID:            wineID,
-			Name:          req.Wine.Name,
-			Vintage:       req.Wine.Vintage,
-			WineTypeID:    req.Wine.WineTypeID,
-			CountryID:     req.Wine.CountryID,
-			RegionID:      req.Wine.RegionID,
-			Producer:      req.Wine.Producer,
-			LabelImageURL: req.Wine.LabelImageURL,
-		}, model.Bottle{
-			ID:           bottleID,
-			WineID:       wineID,
-			RowNumber:    req.Bottle.RowNumber,
-			ColumnNumber: req.Bottle.ColumnNumber,
-			Note:         req.Bottle.Note,
-		}, nil
+	return *wine, *bottle, nil
 }
 
 // ヘルパー関数
-func join(arr []string, sep string) string {
-	result := ""
-	for i, s := range arr {
-		if i > 0 {
-			result += sep
-		}
-		result += s
+// convertWineToDTO: Wine構造体をWineDTO構造体に変換
+func convertWineToDTO(wine *model.Wine) model.WineDTO {
+	dto := model.WineDTO{
+		ID:            int(wine.ID),
+		Name:          wine.Name,
+		Vintage:       wine.Vintage,
+		WineTypeID:    int(wine.WineTypeID),
+		CountryID:     int(wine.CountryID),
+		Producer:      wine.Producer,
+		LabelImageURL: wine.LabelImageURL,
+		WinTypeName:   wine.WineType.Name,
+		CountryName:   wine.Country.Name,
 	}
-	return result
+
+	if wine.RegionID != nil {
+		id := int(*wine.RegionID)
+		dto.RegionID = &id
+		if wine.Region != nil {
+			dto.RegionName = &wine.Region.Name
+		}
+	}
+
+	if wine.AppellationID != nil {
+		id := int(*wine.AppellationID)
+		dto.AppellationID = &id
+		if wine.Appellation != nil {
+			dto.AppellationName = &wine.Appellation.Name
+
+			if wine.Appellation.DesignationType != nil {
+				designationID := int(wine.Appellation.DesignationType.ID)
+				dto.DesignationTypeID = &designationID
+				dto.DesignationTypeName = &wine.Appellation.DesignationType.Name
+			}
+		}
+	}
+
+	return dto
 }
 
-func (s *Service) DeleteWine(id int) error {
-	_, err := s.Pool.Exec(context.Background(), "DELETE FROM wines WHERE id = $1", id)
+func (s *Service) DeleteWine(id uint) error {
+	err := s.WineRepo.Delete(id)
 	if err != nil {
 		fmt.Printf("Error deleting wine with ID %d: %v\n", id, err)
 		return err
@@ -237,9 +176,7 @@ func (s *Service) DeleteWine(id int) error {
 }
 
 func (s *Service) UpdateWine(wine *model.Wine) error {
-	_, err := s.Pool.Exec(context.Background(),
-		"UPDATE wines SET name = $1, vintage = $2, wine_type_id = $3, country_id = $4, region_id = $5, producer = $6 , appellation_id = $7 WHERE id = $8",
-		wine.Name, wine.Vintage, wine.WineTypeID, wine.CountryID, wine.RegionID, wine.Producer, wine.AppellationID, wine.ID)
+	err := s.WineRepo.Update(wine)
 	if err != nil {
 		fmt.Printf("Error updating wine with ID %d: %v\n", wine.ID, err)
 		return err
@@ -248,21 +185,8 @@ func (s *Service) UpdateWine(wine *model.Wine) error {
 	return nil
 }
 
-func (s *Service) PatchWine(id int, updates map[string]interface{}) error {
-	query := "UPDATE wines SET "
-	args := []interface{}{}
-	i := 1
-
-	for key, value := range updates {
-		query += fmt.Sprintf("%s = $%d, ", key, i)
-		args = append(args, value)
-		i++
-	}
-	query = query[:len(query)-2] // Remove trailing comma and space
-	query += " WHERE id = $" + fmt.Sprintf("%d", i)
-	args = append(args, id)
-
-	_, err := s.Pool.Exec(context.Background(), query, args...)
+func (s *Service) PatchWine(id uint, updates map[string]interface{}) error {
+	err := s.WineRepo.Patch(id, updates)
 	if err != nil {
 		fmt.Printf("Error patching wine with ID %d: %v\n", id, err)
 		return err

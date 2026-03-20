@@ -27,12 +27,13 @@ func (h *Handler) ListWines(c *gin.Context) {
 }
 
 func (h *Handler) GetWine(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Printf("GetWine invalid id error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	wine, err := h.Service.GetWine(id)
 	if err != nil {
 		if err.Error() == "not found" {
@@ -119,12 +120,13 @@ func validateCreateWineWithBottleRequest(req model.CreateWineWithBottleRequest) 
 }
 
 func (h *Handler) DeleteWine(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Printf("DeleteWine invalid id error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	id := uint(id64)
 	if err := h.Service.DeleteWine(id); err != nil {
 		log.Printf("DeleteWine service error: %v", err) // 追加
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete wine"})
@@ -134,12 +136,13 @@ func (h *Handler) DeleteWine(c *gin.Context) {
 }
 
 func (h *Handler) UpdateWine(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Printf("UpdateWine invalid id error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id" + err.Error()})
 		return
 	}
+	id := uint(id64)
 	var wine model.Wine
 	if err := c.ShouldBindJSON(&wine); err != nil {
 		log.Printf("UpdateWine bind error: %v", err) // 追加
@@ -156,13 +159,13 @@ func (h *Handler) UpdateWine(c *gin.Context) {
 }
 
 func (h *Handler) PatchWine(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Printf("PatchWine invalid id error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-
+	id := uint(id64)
 	contentType := c.ContentType()
 	updates := make(map[string]interface{})
 
@@ -185,7 +188,7 @@ func (h *Handler) PatchWine(c *gin.Context) {
 			updates["label_image_url"] = tempURL
 
 			// 非同期で画像処理
-			go func(file *multipart.FileHeader, wineID int, fileName string) {
+			go func(file *multipart.FileHeader, wineID uint, fileName string) {
 				if err := h.Service.UploadLabelImage(file, fileName); err != nil {
 					log.Printf("async UploadLabelImage error: %v", err)
 					return

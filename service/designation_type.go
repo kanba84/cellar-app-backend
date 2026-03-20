@@ -2,56 +2,55 @@ package service
 
 import (
 	"cellar-app/model"
-	"context"
+	"fmt"
 )
 
 // --- DesignationType CRUD ---
 
 func (s *Service) ListDesignationTypes() ([]model.DesignationType, error) {
-	rows, err := s.Pool.Query(context.Background(), `SELECT id, name FROM designation_types`)
+	designationTypes, err := s.DesignationTypeRepo.List()
 	if err != nil {
+		fmt.Printf("Error listing designation types: %v\n", err)
 		return nil, err
 	}
-	defer rows.Close()
-
-	result := []model.DesignationType{}
-	for rows.Next() {
-		var dt model.DesignationType
-		if err := rows.Scan(&dt.ID, &dt.Name); err != nil {
-			return nil, err
-		}
-		result = append(result, dt)
-	}
-	return result, nil
+	return designationTypes, nil
 }
 
-func (s *Service) GetDesignationType(id int) (*model.DesignationType, error) {
-	row := s.Pool.QueryRow(context.Background(), `SELECT id, name FROM designation_types WHERE id = $1`, id)
-	var dt model.DesignationType
-	if err := row.Scan(&dt.ID, &dt.Name); err != nil {
+func (s *Service) GetDesignationType(id uint) (*model.DesignationType, error) {
+	designationType, err := s.DesignationTypeRepo.GetByID(id)
+	if err != nil {
+		fmt.Printf("Error retrieving designation type with ID %d: %v\n", id, err)
 		return nil, err
 	}
-	return &dt, nil
+	return designationType, nil
 }
 
 func (s *Service) CreateDesignationType(dt *model.DesignationType) error {
-	return s.Pool.QueryRow(
-		context.Background(),
-		`INSERT INTO designation_types (name, code, rank, country_id) VALUES ($1, $2, $3, $4) RETURNING id`,
-		dt.Name, dt.Code, dt.Rank, dt.CountryID,
-	).Scan(&dt.ID)
+	err := s.DesignationTypeRepo.Create(dt)
+	if err != nil {
+		fmt.Printf("Error creating designation type: %v\n", err)
+		return err
+	}
+	fmt.Printf("Designation type created: %+v\n", dt)
+	return nil
 }
 
 func (s *Service) UpdateDesignationType(dt *model.DesignationType) error {
-	_, err := s.Pool.Exec(
-		context.Background(),
-		`UPDATE designation_types SET name=$1 WHERE id=$2`,
-		dt.Name, dt.ID,
-	)
-	return err
+	err := s.DesignationTypeRepo.Update(dt)
+	if err != nil {
+		fmt.Printf("Error updating designation type with ID %d: %v\n", dt.ID, err)
+		return err
+	}
+	fmt.Printf("Designation type updated: %+v\n", dt)
+	return nil
 }
 
-func (s *Service) DeleteDesignationType(id int) error {
-	_, err := s.Pool.Exec(context.Background(), "DELETE FROM designation_types WHERE id = $1", id)
-	return err
+func (s *Service) DeleteDesignationType(id uint) error {
+	err := s.DesignationTypeRepo.Delete(id)
+	if err != nil {
+		fmt.Printf("Error deleting designation type with ID %d: %v\n", id, err)
+		return err
+	}
+	fmt.Printf("Designation type with ID %d deleted\n", id)
+	return nil
 }
