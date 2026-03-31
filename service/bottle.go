@@ -2,8 +2,13 @@ package service
 
 import (
 	"cellar-app/model"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+var ErrPositionOccupied = errors.New("position is already occupied")
 
 func (s *Service) ListBottles() ([]model.BottleWithWineDTO, error) {
 	bottles, err := s.BottleRepo.List()
@@ -28,6 +33,9 @@ func (s *Service) GetBottle(id uint) (*model.BottleWithWineDTO, error) {
 func (s *Service) CreateBottle(bottle *model.Bottle) error {
 	err := s.BottleRepo.Create(bottle)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrPositionOccupied
+		}
 		fmt.Printf("Error creating bottle: %v\n", err)
 		return err
 	}
@@ -48,6 +56,9 @@ func (s *Service) DeleteBottle(id uint) error {
 func (s *Service) UpdateBottle(bottle *model.Bottle) error {
 	err := s.BottleRepo.Update(bottle)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrPositionOccupied
+		}
 		fmt.Printf("Error updating bottle with ID %d: %v\n", bottle.ID, err)
 		return err
 	}
@@ -59,6 +70,9 @@ func (s *Service) PatchBottle(id uint, updates map[string]interface{}) error {
 	// GORMではMapを使用してパッチ更新
 	err := s.BottleRepo.Patch(id, updates)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrPositionOccupied
+		}
 		fmt.Printf("Error patching bottle with ID %d: %v\n", id, err)
 		return err
 	}
@@ -93,4 +107,11 @@ func (s *Service) toBottleWithWineDTOs(bottles []model.Bottle) []model.BottleWit
 	}
 
 	return result
+}
+
+func isUniqueViolation(err error) bool {
+	if pgErr, ok := err.(*pgconn.PgError); ok {
+		return pgErr.Code == "23505"
+	}
+	return false
 }

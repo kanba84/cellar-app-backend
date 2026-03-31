@@ -2,6 +2,8 @@ package handler
 
 import (
 	"cellar-app/model"
+	"cellar-app/service"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -54,7 +56,19 @@ func (h *Handler) CreateBottle(c *gin.Context) {
 	}
 	if err := h.Service.CreateBottle(&bottle); err != nil {
 		fmt.Println("[CreateBottle] service error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create bottle"})
+		// 棚位置重複エラー
+		if errors.Is(err, service.ErrPositionOccupied) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "POSITION_OCCUPIED",
+				"message": "指定された棚位置は既に使用されています",
+			})
+			return
+		}
+
+		// その他エラー
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to create bottle",
+		})
 		return
 	}
 	c.JSON(http.StatusCreated, bottle)
@@ -90,7 +104,19 @@ func (h *Handler) UpdateBottle(c *gin.Context) {
 	bottle.ID = id
 	if err := h.Service.UpdateBottle(&bottle); err != nil {
 		fmt.Println("[UpdateBottle] service error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update bottle: " + err.Error()})
+		// 棚位置重複エラー
+		if errors.Is(err, service.ErrPositionOccupied) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "POSITION_OCCUPIED",
+				"message": "指定された棚位置は既に使用されています",
+			})
+			return
+		}
+
+		// その他エラー
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to create bottle",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, bottle)
@@ -112,7 +138,19 @@ func (h *Handler) PatchBottle(c *gin.Context) {
 
 	if err := h.Service.PatchBottle(id, updates); err != nil {
 		fmt.Println("[PatchBottle] service error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to patch bottle: " + err.Error()})
+		// 棚位置重複エラー
+		if errors.Is(err, service.ErrPositionOccupied) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "POSITION_OCCUPIED",
+				"message": "指定された棚位置は既に使用されています",
+			})
+			return
+		}
+
+		// その他エラー
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to create bottle",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "bottle patched successfully"})
