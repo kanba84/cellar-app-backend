@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"log" // 追加
 	"math/rand"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"cellar-app/model"
+	"cellar-app/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -103,6 +105,14 @@ func (h *Handler) CreateWineWithBottle(c *gin.Context) {
 	wine, bottle, err := h.Service.CreateWineWithBottle(c, req)
 	if err != nil {
 		log.Printf("CreateWineWithBottle service error: %v", err) // 追加
+		// 棚位置重複エラー
+		if errors.Is(err, service.ErrPositionOccupied) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "POSITION_OCCUPIED",
+				"message": "指定された棚位置は既に使用されています",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create wine and bottle"})
 		return
 	}

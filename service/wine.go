@@ -120,6 +120,9 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 
 	wine, bottle, err := s.WineRepo.CreateWithBottle(ctx, &req.Wine, &req.Bottle)
 	if err != nil {
+		if IsUniqueViolation(err) {
+			return model.Wine{}, model.Bottle{}, ErrPositionOccupied
+		}
 		return model.Wine{}, model.Bottle{}, err
 	}
 
