@@ -103,3 +103,30 @@ type CreateWineWithBottleRequest struct {
 	Wine   Wine   `json:"wine"`
 	Bottle Bottle `json:"bottle"`
 }
+
+// 統計情報のレスポンス構造体
+
+// WineTypeStats: ワインタイプ別の在庫構成比
+type WineTypeStats struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// CountryStats: 生産国別の在庫構成比
+type CountryStats struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// InventoryTrendDataPoint: 在庫数推移のデータポイント
+type InventoryTrendDataPoint struct {
+	Date  string `json:"date"` // YYYY-MM-DD format
+	Count int    `json:"count"`
+}
+
+// Stats: すべての統計情報
+type Stats struct {
+	WineTypes      []WineTypeStats           `json:"wineTypes"`
+	Countries      []CountryStats            `json:"countries"`
+	InventoryTrend []InventoryTrendDataPoint `json:"inventoryTrend"`
+}

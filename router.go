@@ -56,5 +56,12 @@ func SetupRouter(h *handler.Handler) *gin.Engine {
 	r.DELETE("/designation_types/:id", h.DeleteDesignationType)
 
 	r.POST("/label_image", h.UploadLabelImage) // For testing image upload
+
+	// Stats endpoints
+	r.GET("/stats", h.GetStats)
+	r.GET("/stats/wine-types", h.GetWineTypeStats)
+	r.GET("/stats/countries", h.GetCountryStats)
+	r.GET("/stats/inventory-trend", h.GetInventoryTrend)
+
 	return r
 }
