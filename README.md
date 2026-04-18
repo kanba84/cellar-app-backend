@@ -1,6 +1,6 @@
-# cellar-app-go
+# cellar-app-backend
 
-cellar-app-goは、ワインセラー管理アプリ用のGo製バックエンドAPIサーバーです。
+cellar-app-backendは、ワインセラー管理アプリ用のGo製バックエンドAPIサーバーです。
 
 ## ディレクトリ構成
 
