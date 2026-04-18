@@ -124,9 +124,16 @@ type InventoryTrendDataPoint struct {
 	Count int    `json:"count"`
 }
 
+// VintageStats: ワインのビンテージ別の在庫構成比
+type VintageStats struct {
+	Vintage int `json:"vintage"`
+	Count   int `json:"count"`
+}
+
 // Stats: すべての統計情報
 type Stats struct {
 	WineTypes      []WineTypeStats           `json:"wineTypes"`
 	Countries      []CountryStats            `json:"countries"`
+	Vintages       []VintageStats            `json:"vintages"`
 	InventoryTrend []InventoryTrendDataPoint `json:"inventoryTrend"`
 }

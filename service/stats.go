@@ -173,6 +173,52 @@ func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, 
 	return data, nil
 }
 
+// GetVintageStats: ワインのビンテージ別の在庫構成比を集計
+// RemovedAtがnullのボトル（在庫にある）のみを対象
+// Vintageがnullのワインは除外
+// countが多い順でソート
+func (s *Service) GetVintageStats() ([]model.VintageStats, error) {
+	bottles, err := s.BottleRepo.List()
+	if err != nil {
+		fmt.Printf("Error listing bottles for vintage stats: %v\n", err)
+		return nil, err
+	}
+
+	// ビンテージ別にカウント
+	vintageCounts := make(map[int]int)
+
+	for _, bottle := range bottles {
+		// 在庫にあるボトルのみ対象（RemovedAtがnull）
+		if bottle.RemovedAt != nil {
+			continue
+		}
+
+		// Vintageがnullの場合はスキップ
+		if bottle.Wine.Vintage == nil {
+			continue
+		}
+
+		vintage := *bottle.Wine.Vintage
+		vintageCounts[vintage]++
+	}
+
+	// 結果をスライスに変換
+	var stats []model.VintageStats
+	for vintage, count := range vintageCounts {
+		stats = append(stats, model.VintageStats{
+			Vintage: vintage,
+			Count:   count,
+		})
+	}
+
+	// vintageの昇順（古い順）でソート
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Vintage < stats[j].Vintage
+	})
+
+	return stats, nil
+}
+
 // GetStats: すべての統計情報を取得
 func (s *Service) GetStats(days int) (*model.Stats, error) {
 	wineTypeStats, err := s.GetWineTypeStats()
@@ -185,6 +231,11 @@ func (s *Service) GetStats(days int) (*model.Stats, error) {
 		return nil, err
 	}
 
+	vintageStats, err := s.GetVintageStats()
+	if err != nil {
+		return nil, err
+	}
+
 	inventoryTrend, err := s.GetInventoryTrend(days)
 	if err != nil {
 		return nil, err
@@ -193,6 +244,7 @@ func (s *Service) GetStats(days int) (*model.Stats, error) {
 	return &model.Stats{
 		WineTypes:      wineTypeStats,
 		Countries:      countryStats,
+		Vintages:       vintageStats,
 		InventoryTrend: inventoryTrend,
 	}, nil
 }

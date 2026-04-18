@@ -52,6 +52,18 @@ func (h *Handler) GetCountryStats(c *gin.Context) {
 	c.JSON(http.StatusOK, countryStats)
 }
 
+// GetVintageStats: ワインのビンテージ別の在庫構成比を取得
+func (h *Handler) GetVintageStats(c *gin.Context) {
+	vintageStats, err := h.Service.GetVintageStats()
+	if err != nil {
+		fmt.Println("[GetVintageStats] error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve vintage stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, vintageStats)
+}
+
 // GetInventoryTrend: 在庫数推移を取得
 // クエリパラメータ: days (期間、デフォルト30日)
 func (h *Handler) GetInventoryTrend(c *gin.Context) {

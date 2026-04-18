@@ -61,6 +61,7 @@ func SetupRouter(h *handler.Handler) *gin.Engine {
 	r.GET("/stats", h.GetStats)
 	r.GET("/stats/wine-types", h.GetWineTypeStats)
 	r.GET("/stats/countries", h.GetCountryStats)
+	r.GET("/stats/vintages", h.GetVintageStats)
 	r.GET("/stats/inventory-trend", h.GetInventoryTrend)
 
 	return r
