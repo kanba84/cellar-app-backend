@@ -50,6 +50,7 @@ func (r *BottleRepository) GetByID(id uint) (*model.Bottle, error) {
 }
 
 func (r *BottleRepository) Create(bottle *model.Bottle) error {
+	// AddedAt が指定されていない場合、現在時刻を自動設定
 	if bottle.AddedAt == nil {
 		now := time.Now()
 		bottle.AddedAt = &now

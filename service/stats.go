@@ -124,11 +124,14 @@ func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, 
 
 	// ボトルの追加・削除日付を処理して在庫数を計算
 	for _, bottle := range bottles {
+		// AddedAtが nil の場合は、startDate（過去期間の最初の日）を使用
+		addedDate := ""
 		if bottle.AddedAt == nil {
-			continue
+			addedDate = startDate.Format("2006-01-02")
+		} else {
+			addedDate = bottle.AddedAt.Format("2006-01-02")
 		}
 
-		addedDate := bottle.AddedAt.Format("2006-01-02")
 		removedDate := ""
 		if bottle.RemovedAt != nil {
 			removedDate = bottle.RemovedAt.Format("2006-01-02")

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -53,6 +54,11 @@ func (h *Handler) CreateBottle(c *gin.Context) {
 		fmt.Println("[CreateBottle] validation error:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
+	}
+	// AddedAtが明示的に指定されていない場合は現在時刻を設定
+	if bottle.AddedAt == nil {
+		now := time.Now()
+		bottle.AddedAt = &now
 	}
 	if err := h.Service.CreateBottle(&bottle); err != nil {
 		fmt.Println("[CreateBottle] service error:", err)
@@ -135,6 +141,8 @@ func (h *Handler) PatchBottle(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
 		return
 	}
+	// AddedAtは更新不可のため、もしリクエストに含まれていたら削除
+	delete(updates, "added_at")
 
 	if err := h.Service.PatchBottle(id, updates); err != nil {
 		fmt.Println("[PatchBottle] service error:", err)

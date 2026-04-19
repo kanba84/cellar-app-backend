@@ -52,7 +52,17 @@ func (s *Service) DeleteBottle(id uint) error {
 }
 
 func (s *Service) UpdateBottle(bottle *model.Bottle) error {
-	err := s.BottleRepo.Update(bottle)
+	// 既存のボトル情報から AddedAt を取得して保護
+	existingBottle, err := s.BottleRepo.GetByID(bottle.ID)
+	if err != nil {
+		fmt.Printf("Error retrieving existing bottle with ID %d: %v\n", bottle.ID, err)
+		return err
+	}
+
+	// AddedAt は更新不可（既存値を使用）
+	bottle.AddedAt = existingBottle.AddedAt
+
+	err = s.BottleRepo.Update(bottle)
 	if err != nil {
 		if IsUniqueViolation(err) {
 			return ErrPositionOccupied
