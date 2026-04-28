@@ -52,6 +52,11 @@ func main() {
 	// ServiceにDBを渡す（ここが最重要）
 	svc := service.NewService(db)
 
+	// 毎日0:00にスナップショットを作成するスケジューラーを開始
+	if err := svc.StartDailySnapshotScheduler(); err != nil {
+		log.Printf("Warning: Failed to start snapshot scheduler: %v\n", err)
+	}
+
 	h := &handler.Handler{Service: svc}
 	r := SetupRouter(h)
 

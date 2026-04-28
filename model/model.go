@@ -137,3 +137,23 @@ type Stats struct {
 	Vintages       []VintageStats            `json:"vintages"`
 	InventoryTrend []InventoryTrendDataPoint `json:"inventoryTrend"`
 }
+
+// InventoryDailySnapshot: 日次在庫スナップショット
+type InventoryDailySnapshot struct {
+	SnapshotDate time.Time                      `gorm:"primaryKey;column:snapshot_date" json:"snapshot_date"`
+	TotalCount   int                            `gorm:"column:total_count" json:"total_count"`
+	CreatedAt    time.Time                      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time                      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	Details      []InventoryDailySnapshotDetail `gorm:"foreignKey:SnapshotDate;references:SnapshotDate" json:"details,omitempty"`
+}
+
+// InventoryDailySnapshotDetail: 日次在庫スナップショット詳細
+type InventoryDailySnapshotDetail struct {
+	ID           uint      `gorm:"primaryKey;column:id" json:"id"`
+	SnapshotDate time.Time `gorm:"column:snapshot_date;index" json:"snapshot_date"`
+	CategoryType string    `gorm:"column:category_type" json:"category_type"` // wine_type, country, vintage
+	CategoryID   *int      `gorm:"column:category_id" json:"category_id"`
+	CategoryName *string   `gorm:"column:category_name" json:"category_name"`
+	Count        int       `gorm:"column:count" json:"count"`
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+}

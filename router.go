@@ -64,5 +64,9 @@ func SetupRouter(h *handler.Handler) *gin.Engine {
 	r.GET("/stats/vintages", h.GetVintageStats)
 	r.GET("/stats/inventory-trend", h.GetInventoryTrend)
 
+	// Snapshot endpoints
+	r.POST("/snapshots", h.CreateDailySnapshot)
+	r.GET("/snapshots/:date", h.GetDailySnapshot)
+
 	return r
 }

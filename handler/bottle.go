@@ -77,6 +77,14 @@ func (h *Handler) CreateBottle(c *gin.Context) {
 		})
 		return
 	}
+
+	// スナップショット更新を非同期実行（バックグラウンドで処理）
+	go func() {
+		if err := h.Service.UpdateSnapshotIfNeeded(); err != nil {
+			fmt.Println("[CreateBottle] snapshot update error:", err)
+		}
+	}()
+
 	c.JSON(http.StatusCreated, bottle)
 }
 
@@ -177,5 +185,13 @@ func (h *Handler) DeleteBottle(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete bottle"})
 		return
 	}
+
+	// スナップショット更新を非同期実行（バックグラウンドで処理）
+	go func() {
+		if err := h.Service.UpdateSnapshotIfNeeded(); err != nil {
+			fmt.Println("[DeleteBottle] snapshot update error:", err)
+		}
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"message": "bottle deleted successfully"})
 }

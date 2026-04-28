@@ -14,6 +14,7 @@ type Service struct {
 	RegionRepo          *repository.RegionRepository
 	WineTypeRepo        *repository.WineTypeRepository
 	DesignationTypeRepo *repository.DesignationTypeRepository
+	SnapshotRepo        *repository.InventorySnapshotRepo
 }
 
 func NewService(db *gorm.DB) *Service {
@@ -25,5 +26,6 @@ func NewService(db *gorm.DB) *Service {
 		RegionRepo:          repository.NewRegionRepository(db),
 		WineTypeRepo:        repository.NewWineTypeRepository(db),
 		DesignationTypeRepo: repository.NewDesignationTypeRepository(db),
+		SnapshotRepo:        repository.NewInventorySnapshotRepo(db),
 	}
 }
