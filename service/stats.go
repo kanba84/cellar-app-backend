@@ -91,72 +91,72 @@ func (s *Service) GetCountryStats() ([]model.CountryStats, error) {
 	return stats, nil
 }
 
-// GetInventoryTrend: 在庫数推移を集計
+// GetInventoryTrend: 在庫数推移を集計（スナップショットから取得）
 // days: 過去何日分のデータを取得するか（デフォルト30日）
 // 戻り値は日付昇順でソート済み
+// スナップショットが存在しない日については、最も近い直前のスナップショットで補完
 func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, error) {
 	if days <= 0 {
 		days = 30
 	}
-
-	bottles, err := s.BottleRepo.List()
-	if err != nil {
-		fmt.Printf("Error listing bottles for inventory trend: %v\n", err)
-		return nil, err
-	}
-
-	// 日付ごとのボトル数をカウント
-	// 日付キー（YYYY-MM-DD）-> そのボトル数
-	inventoryByDate := make(map[string]int)
-	dateSet := make(map[string]bool)
 
 	// 過去daysの日付範囲を生成
 	now := time.Now()
 	endDate := now
 	startDate := now.AddDate(0, 0, -days)
 
-	// 対象期間の全日付を初期化
-	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-		inventoryByDate[dateStr] = 0
-		dateSet[dateStr] = true
+	// 対象期間内のスナップショットを日付昇順で取得
+	snapshots, err := s.SnapshotRepo.GetSnapshotsByDateRange(startDate, endDate)
+	if err != nil {
+		fmt.Printf("Error retrieving snapshots for inventory trend: %v\n", err)
+		return nil, err
 	}
 
-	// ボトルの追加日付を処理して在庫数を計算
-	// ハードデリート前提のため、削除されたボトルはデータベースに存在しない
-	for _, bottle := range bottles {
-		// AddedAtが nil の場合は、startDate（過去期間の最初の日）を使用
-		addedDate := startDate
-		if bottle.AddedAt != nil {
-			addedDate = *bottle.AddedAt
-		}
+	// 日付ごとのボトル数マップを作成
+	snapshotMap := make(map[string]int)
+	for _, snapshot := range snapshots {
+		dateStr := snapshot.SnapshotDate.Format("2006-01-02")
+		snapshotMap[dateStr] = snapshot.TotalCount
+	}
 
-		// 対象期間の日付について在庫数を計算
-		// ボトルが追加された日以降の日付のみカウント
-		for dateStr := range dateSet {
-			bottleDate, _ := time.Parse("2006-01-02", dateStr)
+	// 対象期間の全日付でデータを生成
+	var data []model.InventoryTrendDataPoint
+	lastKnownCount := 0
+	lastSnapshotFound := false
 
-			// ボトルが追加された日時点でカウント
-			if !bottleDate.Before(addedDate) {
-				inventoryByDate[dateStr]++
+	// 開始日より前のスナップショットから最新値を取得（初期値設定用）
+	if len(snapshots) > 0 {
+		lastKnownCount = snapshots[0].TotalCount
+		lastSnapshotFound = true
+	}
+
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+
+		// スナップショットが存在する場合
+		if count, exists := snapshotMap[dateStr]; exists {
+			lastKnownCount = count
+			lastSnapshotFound = true
+			data = append(data, model.InventoryTrendDataPoint{
+				Date:  dateStr,
+				Count: count,
+			})
+		} else {
+			// スナップショットが存在しない場合は、最後に見つかったスナップショットで補完
+			if lastSnapshotFound {
+				data = append(data, model.InventoryTrendDataPoint{
+					Date:  dateStr,
+					Count: lastKnownCount,
+				})
+			} else {
+				// スナップショットがまったく存在しない場合は0
+				data = append(data, model.InventoryTrendDataPoint{
+					Date:  dateStr,
+					Count: 0,
+				})
 			}
 		}
 	}
-
-	// 日付順にソートしたデータを構築
-	var data []model.InventoryTrendDataPoint
-	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-		data = append(data, model.InventoryTrendDataPoint{
-			Date:  dateStr,
-			Count: inventoryByDate[dateStr],
-		})
-	}
-
-	// 日付昇順でソート（既に昇順だが、念のため）
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Date < data[j].Date
-	})
 
 	return data, nil
 }
