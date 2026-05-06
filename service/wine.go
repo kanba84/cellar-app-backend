@@ -12,6 +12,15 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 		return nil, err
 	}
 
+	wineIDs := make([]uint, 0, len(wines))
+	for i := range wines {
+		wineIDs = append(wineIDs, wines[i].ID)
+	}
+	countsByWineID, err := s.BottleRepo.CountByWineIDs(wineIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	var result []model.WineDTO
 
 	for _, w := range wines {
@@ -46,6 +55,10 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 			CountryISOCode: w.Country.ISOCode,
 		}
 
+		stockCount := countsByWineID[w.ID]
+		dto.StockCount = stockCount
+		dto.HasStock = stockCount > 0
+
 		// --- nullable系だけチェック ---
 		if w.Region != nil {
 			dto.RegionName = &w.Region.Name
@@ -77,6 +90,14 @@ func (s *Service) GetWine(id uint) (*model.WineDTO, error) {
 
 	// WineをWineDTOに変換
 	dto := convertWineToDTO(wine)
+
+	stockCount, err := s.BottleRepo.CountByWineID(wine.ID)
+	if err != nil {
+		return nil, err
+	}
+	dto.StockCount = stockCount
+	dto.HasStock = stockCount > 0
+
 	return &dto, nil
 }
 

@@ -15,6 +15,42 @@ func NewBottleRepository(db *gorm.DB) *BottleRepository {
 	return &BottleRepository{db: db}
 }
 
+func (r *BottleRepository) CountByWineID(wineID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Bottle{}).Where("wine_id = ?", wineID).Count(&count).Error
+	return count, err
+}
+
+type wineBottleCountRow struct {
+	WineID uint  `gorm:"column:wine_id"`
+	Count  int64 `gorm:"column:count"`
+}
+
+// CountByWineIDs は wine_id ごとのボトル数をまとめて取得します（N+1回避用）。
+func (r *BottleRepository) CountByWineIDs(wineIDs []uint) (map[uint]int64, error) {
+	if len(wineIDs) == 0 {
+		return map[uint]int64{}, nil
+	}
+
+	var rows []wineBottleCountRow
+	err := r.db.
+		Model(&model.Bottle{}).
+		Select("wine_id, COUNT(*) as count").
+		Where("wine_id IN ?", wineIDs).
+		Group("wine_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint]int64, len(rows))
+	for _, row := range rows {
+		result[row.WineID] = row.Count
+	}
+
+	return result, nil
+}
+
 func (r *BottleRepository) List() ([]model.Bottle, error) {
 	var bottles []model.Bottle
 

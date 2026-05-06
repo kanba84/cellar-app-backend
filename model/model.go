@@ -37,6 +37,9 @@ type WineDTO struct {
 	DesignationTypeID   *int    `json:"designation_type_id"`
 	DesignationTypeName *string `json:"designation_type_name"`
 	LabelImageURL       *string `json:"label_image_url"`
+
+	HasStock   bool  `json:"has_stock"`
+	StockCount int64 `json:"stock_count"`
 }
 
 type Bottle struct {
