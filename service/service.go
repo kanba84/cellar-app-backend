@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cellar-app/llm"
 	"cellar-app/repository"
 
 	"gorm.io/gorm"
@@ -15,9 +16,12 @@ type Service struct {
 	WineTypeRepo        *repository.WineTypeRepository
 	DesignationTypeRepo *repository.DesignationTypeRepository
 	SnapshotRepo        *repository.InventorySnapshotRepo
+	GrapeRepo           *repository.GrapeRepository
+	WineGrapeRepo       *repository.WineGrapeRepository
+	LLMProvider         llm.WineInfoProvider
 }
 
-func NewService(db *gorm.DB) *Service {
+func NewService(db *gorm.DB, provider llm.WineInfoProvider) *Service {
 	return &Service{
 		WineRepo:            repository.NewWineRepository(db),
 		AppellationRepo:     repository.NewAppellationRepository(db),
@@ -27,5 +31,8 @@ func NewService(db *gorm.DB) *Service {
 		WineTypeRepo:        repository.NewWineTypeRepository(db),
 		DesignationTypeRepo: repository.NewDesignationTypeRepository(db),
 		SnapshotRepo:        repository.NewInventorySnapshotRepo(db),
+		GrapeRepo:           repository.NewGrapeRepository(db),
+		WineGrapeRepo:       repository.NewWineGrapeRepository(db),
+		LLMProvider:         provider,
 	}
 }

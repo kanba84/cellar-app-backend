@@ -164,6 +164,7 @@ func convertWineToDTO(wine *model.Wine) model.WineDTO {
 		WinTypeName:    wine.WineType.Name,
 		CountryName:    wine.Country.Name,
 		CountryISOCode: wine.Country.ISOCode,
+		WineGrapes:     convertWineGrapesToDTO(wine.WineGrapes),
 	}
 
 	if wine.RegionID != nil {
@@ -189,6 +190,22 @@ func convertWineToDTO(wine *model.Wine) model.WineDTO {
 	}
 
 	return dto
+}
+
+func convertWineGrapesToDTO(wineGrapes []model.WineGrape) []model.WineGrapeDTO {
+	result := make([]model.WineGrapeDTO, 0, len(wineGrapes))
+	for _, wg := range wineGrapes {
+		name := ""
+		if wg.Grape.ID != 0 {
+			name = wg.Grape.Name
+		}
+		result = append(result, model.WineGrapeDTO{
+			Percentage:   wg.Percentage,
+			DisplayOrder: wg.DisplayOrder,
+			Name:         name,
+		})
+	}
+	return result
 }
 
 func (s *Service) DeleteWine(id uint) error {
