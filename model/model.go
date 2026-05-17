@@ -16,30 +16,38 @@ type Wine struct {
 	AppellationID *uint        `json:"appellation_id"`
 	Appellation   *Appellation `gorm:"foreignKey:AppellationID" json:"appellation,omitempty"`
 	LabelImageURL *string      `gorm:"size:512" json:"label_image_url"`
+	WineGrapes    []WineGrape  `gorm:"foreignKey:WineID" json:"wine_grapes,omitempty"`
 }
 
 // WineDTOは、APIレスポンス用のWineデータを表す構造体です。
 // Wine構造体をベースに、必要なフィールドのみを含めています。
 type WineDTO struct {
-	ID                  int     `json:"id"`
-	Name                string  `json:"name"`
-	CountryID           int     `json:"country_id"`
-	CountryName         string  `json:"country_name"`
-	CountryISOCode      string  `json:"country_iso_code"`
-	WineTypeID          int     `json:"wine_type_id"`
-	WinTypeName         string  `json:"wine_type_name"`
-	Vintage             *int    `json:"vintage"`
-	RegionID            *int    `json:"region_id"`
-	RegionName          *string `json:"region_name"`
-	Producer            *string `json:"producer"`
-	AppellationID       *int    `json:"appellation_id"`
-	AppellationName     *string `json:"appellation_name"`
-	DesignationTypeID   *int    `json:"designation_type_id"`
-	DesignationTypeName *string `json:"designation_type_name"`
-	LabelImageURL       *string `json:"label_image_url"`
+	ID                  int         `json:"id"`
+	Name                string      `json:"name"`
+	CountryID           int         `json:"country_id"`
+	CountryName         string      `json:"country_name"`
+	CountryISOCode      string      `json:"country_iso_code"`
+	WineTypeID          int         `json:"wine_type_id"`
+	WinTypeName         string      `json:"wine_type_name"`
+	Vintage             *int        `json:"vintage"`
+	RegionID            *int        `json:"region_id"`
+	RegionName          *string     `json:"region_name"`
+	Producer            *string     `json:"producer"`
+	AppellationID       *int        `json:"appellation_id"`
+	AppellationName     *string     `json:"appellation_name"`
+	DesignationTypeID   *int             `json:"designation_type_id"`
+	DesignationTypeName *string          `json:"designation_type_name"`
+	LabelImageURL       *string          `json:"label_image_url"`
+	WineGrapes          []WineGrapeDTO   `json:"wine_grapes,omitempty"`
 
 	HasStock   bool  `json:"has_stock"`
 	StockCount int64 `json:"stock_count"`
+}
+
+type WineGrapeDTO struct {
+	Percentage   *float64 `json:"percentage"`
+	DisplayOrder int      `json:"display_order"`
+	Name         string   `json:"name"`
 }
 
 type Bottle struct {
@@ -68,13 +76,13 @@ type BottleWithWineDTO struct {
 
 type WineType struct {
 	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"size:255;not null" json:"name"`
+	Name string `gorm:"size:255;not null;uniqueIndex" json:"name"`
 }
 
 type Country struct {
 	ID      uint   `gorm:"primaryKey" json:"id"`
-	Name    string `gorm:"size:255;not null" json:"name"`
-	ISOCode string `gorm:"size:2" json:"iso_code"` // ISO 3166-1 alpha-2 コード
+	Name    string `gorm:"size:255;not null;uniqueIndex" json:"name"`
+	ISOCode string `gorm:"size:2" json:"iso_code"`
 }
 
 type Region struct {
@@ -159,4 +167,32 @@ type InventoryDailySnapshotDetail struct {
 	CategoryName *string   `gorm:"column:category_name" json:"category_name"`
 	Count        int       `gorm:"column:count" json:"count"`
 	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+}
+
+// Grape: ブドウ品種
+type Grape struct {
+	ID   uint   `gorm:"primaryKey" json:"id"`
+	Name string `gorm:"size:255;not null;uniqueIndex" json:"name"`
+}
+
+// WineGrape: Wine と Grape の多対多リレーション（明示的な中間テーブル）
+type WineGrape struct {
+	WineID       uint      `gorm:"primaryKey;column:wine_id" json:"wine_id"`
+	GrapeID      uint      `gorm:"primaryKey;column:grape_id" json:"grape_id"`
+	Percentage   *float64  `gorm:"column:percentage" json:"percentage"`
+	DisplayOrder int       `gorm:"column:display_order" json:"display_order"`
+	Grape        Grape     `gorm:"foreignKey:GrapeID" json:"grape,omitempty"`
+	Wine         *Wine     `gorm:"foreignKey:WineID" json:"wine,omitempty"`
+}
+
+// TableName: WineGrape テーブル名を明示的に指定
+func (WineGrape) TableName() string {
+	return "wine_grapes"
+}
+
+// LLMWineInfo: LLM から取得したワイン情報
+type LLMWineInfo struct {
+	Producer   *string `json:"producer"`
+	Grapes     []Grape `json:"grapes"`
+	TastingNote *string `json:"tasting_note"`
 }

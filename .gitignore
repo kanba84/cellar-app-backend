@@ -1,3 +1,4 @@
+.env.sh
 cellar-app
 cellar-app-mac
 ssl/

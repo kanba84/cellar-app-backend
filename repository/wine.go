@@ -38,6 +38,8 @@ func (r *WineRepository) GetByID(id uint) (*model.Wine, error) {
 		Preload("Region").
 		Preload("Appellation").
 		Preload("Appellation.DesignationType").
+		Preload("WineGrapes").
+		Preload("WineGrapes.Grape").
 		First(&wine, id).Error
 
 	if err != nil {
@@ -49,6 +51,10 @@ func (r *WineRepository) GetByID(id uint) (*model.Wine, error) {
 
 func (r *WineRepository) Create(wine *model.Wine) error {
 	return r.db.Create(wine).Error
+}
+
+func (r *WineRepository) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	return r.db.WithContext(ctx).Transaction(fn)
 }
 
 func (r *WineRepository) Update(wine *model.Wine) error {

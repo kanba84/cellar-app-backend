@@ -11,6 +11,7 @@ func SetupRouter(h *handler.Handler) *gin.Engine {
 	// ルーティング設定
 	r.GET("/wines", h.ListWines)
 	r.GET("/wines/:id", h.GetWine)
+	r.GET("/wines/:id/llm-info", h.GetWineLLMInfo)
 	r.POST("/wines", h.CreateWine)
 	r.POST("/wines/with_bottle", h.CreateWineWithBottle)
 	r.PUT("/wines/:id", h.UpdateWine)

@@ -2,6 +2,8 @@ package main
 
 import (
 	"cellar-app/handler"
+	"cellar-app/llm"
+	"cellar-app/model"
 	"cellar-app/service"
 	"fmt"
 	"log"
@@ -49,8 +51,23 @@ func main() {
 
 	fmt.Println("DB接続成功")
 
-	// ServiceにDBを渡す（ここが最重要）
-	svc := service.NewService(db)
+	// AutoMigrate: 新しいテーブル（grapes, wine_grapes）のみ
+	if err := db.AutoMigrate(
+		&model.Grape{},
+		&model.WineGrape{},
+	); err != nil {
+		log.Fatalf("Migration failed: %v", err)
+	}
+
+	fmt.Println("Migration completed")
+
+	provider, err := llm.NewWineInfoProvider()
+	if err != nil {
+		log.Fatalf("LLM provider initialization failed: %v", err)
+	}
+
+	// ServiceにDBとLLMプロバイダーを渡す
+	svc := service.NewService(db, provider)
 
 	// 毎日0:00にスナップショットを作成するスケジューラーを開始
 	if err := svc.StartDailySnapshotScheduler(); err != nil {
