@@ -25,9 +25,10 @@ func (k WineLookupKey) CacheKey() string {
 
 // WineInfoResult is structured wine information returned by an LLM provider.
 type WineInfoResult struct {
-	Producer    *string     `json:"producer"`
-	Grapes      []GrapeInfo `json:"grapes"`
-	TastingNote *string     `json:"tasting_note"`
+	Producer           *string     `json:"producer"`
+	Grapes             []GrapeInfo `json:"grapes"`
+	TastingNote        *string     `json:"tasting_note"`
+	ReferencePriceJPY  *float64    `json:"reference_price_jpy"`
 }
 
 // GrapeInfo holds display and normalized grape names.

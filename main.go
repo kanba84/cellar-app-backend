@@ -52,7 +52,9 @@ func main() {
 	fmt.Println("DB接続成功")
 
 	// AutoMigrate: 新しいテーブル（grapes, wine_grapes）のみ
+	// Wine モデルに新しいフィールドを追加した場合は、AutoMigrate に Wine を追加
 	if err := db.AutoMigrate(
+		&model.Wine{},
 		&model.Grape{},
 		&model.WineGrape{},
 	); err != nil {

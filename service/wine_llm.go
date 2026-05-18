@@ -9,6 +9,34 @@ import (
 	"gorm.io/gorm"
 )
 
+// FetchWineInfoOnly: ワイン名から LLM を使用してワイン情報を取得します（DB保存なし）
+// フロントエンドで表示し、ユーザーの操作により別途保存する想定です
+func (s *Service) FetchWineInfoOnly(ctx context.Context, wine *model.Wine) (*llm.WineInfoResult, error) {
+	if wine == nil {
+		return nil, fmt.Errorf("wine is nil")
+	}
+
+	if s.LLMProvider == nil {
+		return nil, fmt.Errorf("LLM provider is not configured")
+	}
+
+	// LLM から情報を取得
+	lookupKey := llm.WineLookupKey{Name: wine.Name}
+	if wine.Vintage != nil {
+		lookupKey.Vintage = wine.Vintage
+	}
+	info, err := s.LLMProvider.FetchWineInfo(ctx, lookupKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch wine info from LLM: %w", err)
+	}
+
+	if info == nil {
+		return nil, fmt.Errorf("no wine info returned from LLM")
+	}
+
+	return info, nil
+}
+
 // FetchAndSaveWineInfo: ワイン名から LLM を使用してワイン情報を取得し、DBに保存します
 func (s *Service) FetchAndSaveWineInfo(ctx context.Context, wine *model.Wine) (*llm.WineInfoResult, error) {
 	if wine == nil {

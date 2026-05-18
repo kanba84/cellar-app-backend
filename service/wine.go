@@ -4,6 +4,8 @@ import (
 	"cellar-app/model"
 	"context"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 func (s *Service) ListWines() ([]model.WineDTO, error) {
@@ -236,4 +238,68 @@ func (s *Service) PatchWine(id uint, updates map[string]interface{}) error {
 	}
 	fmt.Printf("Wine with ID %d patched successfully\n", id)
 	return nil
+}
+
+// UpdateWineWithGrapes: ワイン情報とWineGrapesを更新します
+// grapes が空でない場合は既存の WineGrapes を削除して新しく作成します
+// 新しいブドウが必要な場合は自動作成します
+func (s *Service) UpdateWineWithGrapes(ctx context.Context, wineID uint, updates map[string]interface{}, grapes []model.WineGrapeDTO) error {
+	if wineID == 0 {
+		return fmt.Errorf("wine id is required")
+	}
+
+	// トランザクション内で実行
+	err := s.WineRepo.Transaction(ctx, func(tx *gorm.DB) error {
+		// ワイン情報を更新
+		if len(updates) > 0 {
+			if err := tx.Model(&model.Wine{}).
+				Where("id = ?", wineID).
+				Updates(updates).Error; err != nil {
+				return fmt.Errorf("failed to update wine: %w", err)
+			}
+		}
+
+		// WineGrapes が提供されていない場合は終了
+		if len(grapes) == 0 {
+			return nil
+		}
+
+		// 既存の WineGrapes を削除
+		if err := s.WineGrapeRepo.DeleteByWineIDTx(tx, wineID); err != nil {
+			return fmt.Errorf("failed to delete existing wine grapes: %w", err)
+		}
+
+		// 新しい WineGrapes を作成
+		wineGrapes := make([]model.WineGrape, 0, len(grapes))
+		for order, grapeDTO := range grapes {
+			// ブドウ名から既存ブドウを検索または作成
+			// WineGrapeDTO.Name はノーマライズされたブドウ名を使用
+			normalizedName := grapeDTO.Name
+			if normalizedName == "" {
+				return fmt.Errorf("grape name is required at position %d", order)
+			}
+
+			grape, err := s.GrapeRepo.GetOrCreateByNameTx(tx, normalizedName)
+			if err != nil {
+				return fmt.Errorf("failed to get or create grape '%s': %w", normalizedName, err)
+			}
+
+			wineGrape := model.WineGrape{
+				WineID:       wineID,
+				GrapeID:      grape.ID,
+				Percentage:   grapeDTO.Percentage,
+				DisplayOrder: order,
+			}
+			wineGrapes = append(wineGrapes, wineGrape)
+		}
+
+		// 新しい WineGrapes をバッチ作成
+		if err := s.WineGrapeRepo.CreateBatchTx(tx, wineGrapes); err != nil {
+			return fmt.Errorf("failed to save wine grapes: %w", err)
+		}
+
+		return nil
+	})
+
+	return err
 }

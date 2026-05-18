@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log" // 追加
@@ -178,21 +179,29 @@ func (h *Handler) PatchWine(c *gin.Context) {
 	id := uint(id64)
 	contentType := c.ContentType()
 	updates := make(map[string]interface{})
+	var wineGrapes []model.WineGrapeDTO
 
 	// --- multipart/form-data の場合（画像を含む） ---
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		// フォームフィールドを取得
 		for key, values := range c.Request.PostForm {
-			if len(values) > 0 {
+			if len(values) > 0 && key != "wine_grapes" {
 				updates[key] = values[0]
+			}
+		}
+
+		// wine_grapes JSON を処理（複数値の場合）
+		if grapeStr := c.PostForm("wine_grapes"); grapeStr != "" {
+			if err := json.Unmarshal([]byte(grapeStr), &wineGrapes); err != nil {
+				log.Printf("PatchWine failed to parse wine_grapes: %v", err)
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid wine_grapes format"})
+				return
 			}
 		}
 
 		// ファイルを取得
 		file, err := c.FormFile("label_image")
 		if err == nil && file != nil {
-			// 一時的なURLを先に設定しておく
-
 			outputFileName := generateJPEGFileName()                        // thumb_xxxxxxxx.jpg 形式のファイル名を生成
 			tempURL := "https://cellar-app.local/labels/temp_thumbnail.png" // サンプル画像のURLを一時的にセット
 			updates["label_image_url"] = tempURL
@@ -212,24 +221,41 @@ func (h *Handler) PatchWine(c *gin.Context) {
 
 	} else {
 		// --- JSON入力（従来通り） ---
-		if err := c.ShouldBindJSON(&updates); err != nil {
+		var jsonBody map[string]interface{}
+		if err := c.ShouldBindJSON(&jsonBody); err != nil {
 			log.Printf("PatchWine bind error: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
 			return
 		}
+
+		// wine_grapes を抽出
+		if grapesData, exists := jsonBody["wine_grapes"]; exists {
+			grapeBytes, err := json.Marshal(grapesData)
+			if err == nil {
+				json.Unmarshal(grapeBytes, &wineGrapes)
+			}
+			delete(jsonBody, "wine_grapes")
+		}
+
+		updates = jsonBody
 	}
 
 	// --- DB更新 ---
-	if err := h.Service.PatchWine(id, updates); err != nil {
+	if err := h.Service.UpdateWineWithGrapes(c.Request.Context(), id, updates, wineGrapes); err != nil {
 		log.Printf("PatchWine service error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to patch wine"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "wine patched successfully",
-		"updates": updates,
-	})
+	// 更新されたワイン情報を取得
+	updatedWine, err := h.Service.GetWine(id)
+	if err != nil {
+		log.Printf("PatchWine failed to retrieve updated wine: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve updated wine"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedWine)
 }
 
 func generateJPEGFileName() string {

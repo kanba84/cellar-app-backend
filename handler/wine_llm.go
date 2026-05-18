@@ -11,6 +11,7 @@ import (
 
 // GetWineLLMInfo: Wine ID から LLM を使用してワイン情報を取得します
 // GET /wines/:id/llm-info
+// 取得した情報はフロントエンドで表示され、ユーザー操作により別途保存されます
 func (h *Handler) GetWineLLMInfo(c *gin.Context) {
 	// Wine ID を取得
 	idStr := c.Param("id")
@@ -45,9 +46,9 @@ func (h *Handler) GetWineLLMInfo(c *gin.Context) {
 		wine.Producer = wineDTO.Producer
 	}
 
-	// LLM からワイン情報を取得して保存
+	// LLM からワイン情報を取得（DB保存なし）
 	ctx := c.Request.Context()
-	info, err := h.Service.FetchAndSaveWineInfo(ctx, wine)
+	info, err := h.Service.FetchWineInfoOnly(ctx, wine)
 	if err != nil {
 		log.Printf("GetWineLLMInfo failed to fetch wine info: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch wine info"})

@@ -3,20 +3,21 @@ package model
 import "time"
 
 type Wine struct {
-	ID            uint         `gorm:"primaryKey" json:"id"`
-	Name          string       `gorm:"size:255;not null" json:"name"`
-	CountryID     uint         `gorm:"not null" json:"country_id"`
-	Country       Country      `gorm:"foreignKey:CountryID" json:"country,omitempty"`
-	WineTypeID    uint         `gorm:"not null" json:"wine_type_id"`
-	WineType      WineType     `gorm:"foreignKey:WineTypeID" json:"wine_type,omitempty"`
-	Vintage       *int         `json:"vintage"`
-	RegionID      *uint        `json:"region_id"`
-	Region        *Region      `gorm:"foreignKey:RegionID" json:"region,omitempty"`
-	Producer      *string      `gorm:"size:255" json:"producer"`
-	AppellationID *uint        `json:"appellation_id"`
-	Appellation   *Appellation `gorm:"foreignKey:AppellationID" json:"appellation,omitempty"`
-	LabelImageURL *string      `gorm:"size:512" json:"label_image_url"`
-	WineGrapes    []WineGrape  `gorm:"foreignKey:WineID" json:"wine_grapes,omitempty"`
+	ID             uint         `gorm:"primaryKey" json:"id"`
+	Name           string       `gorm:"size:255;not null" json:"name"`
+	CountryID      uint         `gorm:"not null" json:"country_id"`
+	Country        Country      `gorm:"foreignKey:CountryID" json:"country,omitempty"`
+	WineTypeID     uint         `gorm:"not null" json:"wine_type_id"`
+	WineType       WineType     `gorm:"foreignKey:WineTypeID" json:"wine_type,omitempty"`
+	Vintage        *int         `json:"vintage"`
+	RegionID       *uint        `json:"region_id"`
+	Region         *Region      `gorm:"foreignKey:RegionID" json:"region,omitempty"`
+	Producer       *string      `gorm:"size:255" json:"producer"`
+	AppellationID  *uint        `json:"appellation_id"`
+	Appellation    *Appellation `gorm:"foreignKey:AppellationID" json:"appellation,omitempty"`
+	LabelImageURL  *string      `gorm:"size:512" json:"label_image_url"`
+	ReferencePrice *float64     `json:"reference_price"`
+	WineGrapes     []WineGrape  `gorm:"foreignKey:WineID" json:"wine_grapes,omitempty"`
 }
 
 // WineDTOは、APIレスポンス用のWineデータを表す構造体です。
@@ -35,9 +36,10 @@ type WineDTO struct {
 	Producer            *string     `json:"producer"`
 	AppellationID       *int        `json:"appellation_id"`
 	AppellationName     *string     `json:"appellation_name"`
-	DesignationTypeID   *int             `json:"designation_type_id"`
-	DesignationTypeName *string          `json:"designation_type_name"`
-	LabelImageURL       *string          `json:"label_image_url"`
+	DesignationTypeID   *int        `json:"designation_type_id"`
+	DesignationTypeName *string     `json:"designation_type_name"`
+	LabelImageURL       *string     `json:"label_image_url"`
+	ReferencePrice      *float64    `json:"reference_price"`
 	WineGrapes          []WineGrapeDTO   `json:"wine_grapes,omitempty"`
 
 	HasStock   bool  `json:"has_stock"`
