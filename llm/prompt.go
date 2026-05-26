@@ -3,9 +3,19 @@ package llm
 import "fmt"
 
 func buildWineInfoPrompt(key WineLookupKey) string {
+	// Build wine description with available information
 	wineDescription := key.Name
 	if key.Vintage != nil {
-		wineDescription = fmt.Sprintf("%s (%d)", key.Name, *key.Vintage)
+		wineDescription = fmt.Sprintf("%s (%d)", wineDescription, *key.Vintage)
+	}
+	if key.Producer != nil && *key.Producer != "" {
+		wineDescription = fmt.Sprintf("%s, produced by %s", wineDescription, *key.Producer)
+	}
+	if key.CountryName != nil && *key.CountryName != "" {
+		wineDescription = fmt.Sprintf("%s, from %s", wineDescription, *key.CountryName)
+	}
+	if key.RegionName != nil && *key.RegionName != "" {
+		wineDescription = fmt.Sprintf("%s, %s", wineDescription, *key.RegionName)
 	}
 
 	if key.IncludeTastingNote {

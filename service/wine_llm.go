@@ -25,6 +25,15 @@ func (s *Service) FetchWineInfoOnly(ctx context.Context, wine *model.Wine) (*llm
 	if wine.Vintage != nil {
 		lookupKey.Vintage = wine.Vintage
 	}
+	if wine.Producer != nil && *wine.Producer != "" {
+		lookupKey.Producer = wine.Producer
+	}
+	if wine.Country.Name != "" {
+		lookupKey.CountryName = &wine.Country.Name
+	}
+	if wine.Region != nil && wine.Region.Name != "" {
+		lookupKey.RegionName = &wine.Region.Name
+	}
 	info, err := s.LLMProvider.FetchWineInfo(ctx, lookupKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch wine info from LLM: %w", err)
@@ -51,6 +60,15 @@ func (s *Service) FetchAndSaveWineInfo(ctx context.Context, wine *model.Wine) (*
 	lookupKey := llm.WineLookupKey{Name: wine.Name}
 	if wine.Vintage != nil {
 		lookupKey.Vintage = wine.Vintage
+	}
+	if wine.Producer != nil && *wine.Producer != "" {
+		lookupKey.Producer = wine.Producer
+	}
+	if wine.Country.Name != "" {
+		lookupKey.CountryName = &wine.Country.Name
+	}
+	if wine.Region != nil && wine.Region.Name != "" {
+		lookupKey.RegionName = &wine.Region.Name
 	}
 	info, err := s.LLMProvider.FetchWineInfo(ctx, lookupKey)
 	if err != nil {

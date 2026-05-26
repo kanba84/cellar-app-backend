@@ -10,6 +10,9 @@ import (
 type WineLookupKey struct {
 	Name              string
 	Vintage           *int
+	Producer          *string
+	CountryName       *string
+	RegionName        *string
 	IncludeTastingNote bool
 }
 

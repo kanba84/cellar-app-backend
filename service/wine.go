@@ -163,10 +163,11 @@ func convertWineToDTO(wine *model.Wine) model.WineDTO {
 		CountryID:      int(wine.CountryID),
 		Producer:       wine.Producer,
 		LabelImageURL:  wine.LabelImageURL,
+		ReferencePrice: wine.ReferencePrice,
+		WineGrapes:     convertWineGrapesToDTO(wine.WineGrapes),
 		WinTypeName:    wine.WineType.Name,
 		CountryName:    wine.Country.Name,
 		CountryISOCode: wine.Country.ISOCode,
-		WineGrapes:     convertWineGrapesToDTO(wine.WineGrapes),
 	}
 
 	if wine.RegionID != nil {
