@@ -112,10 +112,10 @@ func (s *Service) CreateWine(wine *model.Wine) error {
 	// ラベル画像URLが未設定の場合、デフォルト値を設定
 	if wine.LabelImageURL == nil {
 		if wine.WineTypeID == 1 { // 赤ワインの場合
-			defaultURL := "https://cellar-app.local/labels/sample_thumbnail.png"
+			defaultURL := "/labels/sample_thumbnail.png"
 			wine.LabelImageURL = &defaultURL
 		} else { // 白ワイン/スパークリングの場合
-			defaultURL := "https://cellar-app.local/labels/sample_thumbnail2.png"
+			defaultURL := "/labels/sample_thumbnail2.png"
 			wine.LabelImageURL = &defaultURL
 		}
 	}
@@ -133,10 +133,10 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 	// ラベル画像URLが未設定の場合、デフォルト値を設定
 	if req.Wine.LabelImageURL == nil {
 		if req.Wine.WineTypeID == 1 {
-			defaultURL := "https://cellar-app.local/labels/sample_thumbnail.png"
+			defaultURL := "/labels/sample_thumbnail.png"
 			req.Wine.LabelImageURL = &defaultURL
 		} else {
-			defaultURL := "https://cellar-app.local/labels/sample_thumbnail2.png"
+			defaultURL := "/labels/sample_thumbnail2.png"
 			req.Wine.LabelImageURL = &defaultURL
 		}
 	}
