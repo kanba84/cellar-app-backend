@@ -63,6 +63,10 @@ func (h *Handler) CreateWine(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
+	if err := validateDrinkingWindow(wine.DrinkingWindowStart, wine.DrinkingWindowEnd); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
+		return
+	}
 	if err := h.Service.CreateWine(&wine); err != nil {
 		log.Printf("CreateWine service error: %v", err) // 追加
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create wine"})
@@ -80,6 +84,13 @@ func validateCreateWineRequest(wine model.Wine) error {
 	}
 	if wine.CountryID == 0 {
 		return fmt.Errorf("country_id is required")
+	}
+	return nil
+}
+
+func validateDrinkingWindow(start, end *int) error {
+	if start != nil && end != nil && *start > *end {
+		return fmt.Errorf("drinking_window_start must be less than or equal to drinking_window_end")
 	}
 	return nil
 }
@@ -124,6 +135,9 @@ func validateCreateWineWithBottleRequest(req model.CreateWineWithBottleRequest) 
 	if validateCreateWineRequest(req.Wine) != nil {
 		return fmt.Errorf("invalid wine data")
 	}
+	if err := validateDrinkingWindow(req.Wine.DrinkingWindowStart, req.Wine.DrinkingWindowEnd); err != nil {
+		return err
+	}
 	if validateCreateBottleRequest(req.Bottle, true) != nil {
 		return fmt.Errorf("invalid bottle data")
 	}
@@ -161,6 +175,10 @@ func (h *Handler) UpdateWine(c *gin.Context) {
 		return
 	}
 	wine.ID = id
+	if err := validateDrinkingWindow(wine.DrinkingWindowStart, wine.DrinkingWindowEnd); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
+		return
+	}
 	if err := h.Service.UpdateWine(&wine); err != nil {
 		log.Printf("UpdateWine service error: %v", err) // 追加
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update wine" + err.Error()})
@@ -239,6 +257,10 @@ func (h *Handler) PatchWine(c *gin.Context) {
 
 		updates = jsonBody
 	}
+	if err := validateDrinkingWindowUpdates(updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
+		return
+	}
 
 	// --- DB更新 ---
 	if err := h.Service.UpdateWineWithGrapes(c.Request.Context(), id, updates, wineGrapes); err != nil {
@@ -256,6 +278,40 @@ func (h *Handler) PatchWine(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, updatedWine)
+}
+
+func validateDrinkingWindowUpdates(updates map[string]interface{}) error {
+	startValue, hasStart := updates["drinking_window_start"]
+	endValue, hasEnd := updates["drinking_window_end"]
+	if !hasStart || !hasEnd || startValue == nil || endValue == nil {
+		return nil
+	}
+
+	start, err := parseDrinkingWindowYear(startValue)
+	if err != nil {
+		return fmt.Errorf("drinking_window_start must be a valid year")
+	}
+	end, err := parseDrinkingWindowYear(endValue)
+	if err != nil {
+		return fmt.Errorf("drinking_window_end must be a valid year")
+	}
+	return validateDrinkingWindow(&start, &end)
+}
+
+func parseDrinkingWindowYear(value interface{}) (int, error) {
+	switch year := value.(type) {
+	case float64:
+		if year != float64(int(year)) {
+			return 0, fmt.Errorf("year must be an integer")
+		}
+		return int(year), nil
+	case string:
+		return strconv.Atoi(year)
+	case int:
+		return year, nil
+	default:
+		return 0, fmt.Errorf("unsupported year value")
+	}
 }
 
 func generateJPEGFileName() string {
