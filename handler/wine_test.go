@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cellar-app/model"
 	"testing"
 )
 
@@ -53,5 +54,52 @@ func TestValidateDrinkingWindowUpdates(t *testing.T) {
 		"drinking_window_end":   float64(2035),
 	}); err != nil {
 		t.Fatalf("partial nullable values should pass: %v", err)
+	}
+}
+
+func TestValidateCreateBottleRequestRowLimit(t *testing.T) {
+	tests := []struct {
+		name      string
+		rowNumber int
+		wantError bool
+	}{
+		{name: "existing nine row cellar", rowNumber: 9},
+		{name: "maximum ten row cellar", rowNumber: 10},
+		{name: "reject eleven rows", rowNumber: 11, wantError: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			bottle := model.Bottle{
+				WineID:       1,
+				RowNumber:    intPointer(test.rowNumber),
+				ColumnNumber: intPointer(1),
+			}
+			err := validateCreateBottleRequest(bottle, false)
+			if (err != nil) != test.wantError {
+				t.Fatalf("validateCreateBottleRequest() error = %v, wantError %v", err, test.wantError)
+			}
+		})
+	}
+}
+
+func TestValidateRowNumberUpdates(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     interface{}
+		wantError bool
+	}{
+		{name: "ten is accepted", value: float64(10)},
+		{name: "eleven is rejected", value: float64(11), wantError: true},
+		{name: "null leaves position unchanged", value: nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateRowNumberUpdate(map[string]interface{}{"row_number": test.value})
+			if (err != nil) != test.wantError {
+				t.Fatalf("validateRowNumberUpdate() error = %v, wantError %v", err, test.wantError)
+			}
+		})
 	}
 }

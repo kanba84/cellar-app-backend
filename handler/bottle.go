@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const maxCellarRows = 10
+
 func (h *Handler) ListBottles(c *gin.Context) {
 	bottles, err := h.Service.ListBottles()
 	if err != nil {
@@ -95,9 +97,41 @@ func validateCreateBottleRequest(bottle model.Bottle, ignoreId bool) error {
 	if bottle.RowNumber == nil || *bottle.RowNumber <= 0 {
 		return fmt.Errorf("row_number must be greater than 0")
 	}
+	if err := validateRowNumberLimit(bottle.RowNumber); err != nil {
+		return err
+	}
 	if bottle.ColumnNumber == nil || *bottle.ColumnNumber <= 0 {
 		return fmt.Errorf("column_number must be greater than 0")
 	}
+	return nil
+}
+
+func validateRowNumberLimit(rowNumber *int) error {
+	if rowNumber != nil && *rowNumber > maxCellarRows {
+		return fmt.Errorf("row_number must be at most %d", maxCellarRows)
+	}
+	return nil
+}
+
+func validateRowNumberUpdate(updates map[string]interface{}) error {
+	value, exists := updates["row_number"]
+	if !exists || value == nil {
+		return nil
+	}
+
+	switch rowNumber := value.(type) {
+	case float64:
+		if rowNumber > maxCellarRows {
+			return fmt.Errorf("row_number must be at most %d", maxCellarRows)
+		}
+	case int:
+		if rowNumber > maxCellarRows {
+			return fmt.Errorf("row_number must be at most %d", maxCellarRows)
+		}
+	default:
+		return fmt.Errorf("row_number must be a number")
+	}
+
 	return nil
 }
 
@@ -113,6 +147,10 @@ func (h *Handler) UpdateBottle(c *gin.Context) {
 	if err := c.ShouldBindJSON(&bottle); err != nil {
 		fmt.Println("[UpdateBottle] bind error:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
+		return
+	}
+	if err := validateRowNumberLimit(bottle.RowNumber); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
 	bottle.ID = id
@@ -151,6 +189,10 @@ func (h *Handler) PatchBottle(c *gin.Context) {
 	}
 	// AddedAtは更新不可のため、もしリクエストに含まれていたら削除
 	delete(updates, "added_at")
+	if err := validateRowNumberUpdate(updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
+		return
+	}
 
 	if err := h.Service.PatchBottle(id, updates); err != nil {
 		fmt.Println("[PatchBottle] service error:", err)
