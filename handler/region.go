@@ -1,10 +1,9 @@
 package handler
 
 import (
+	"cellar-app/dto"
 	"net/http"
 	"strconv"
-
-	"cellar-app/model"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +15,11 @@ func (h *Handler) ListRegions(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, regions)
+	response := make([]dto.RegionDTO, 0, len(regions))
+	for _, region := range regions {
+		response = append(response, dto.RegionFromModel(region))
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // GetRegion handles GET /regions/:id
@@ -32,22 +35,23 @@ func (h *Handler) GetRegion(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, region)
+	c.JSON(http.StatusOK, dto.RegionFromModel(*region))
 }
 
 // CreateRegion handles POST /regions
 func (h *Handler) CreateRegion(c *gin.Context) {
-	var req model.Region
+	var req dto.RegionDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err := h.Service.CreateRegion(&req)
+	regionModel := req.ToModel()
+	err := h.Service.CreateRegion(&regionModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, req)
+	c.JSON(http.StatusCreated, dto.RegionFromModel(regionModel))
 }
 
 // UpdateRegion handles PUT /regions/:id
@@ -58,18 +62,19 @@ func (h *Handler) UpdateRegion(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var req model.Region
+	var req dto.RegionDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	req.ID = id // Ensure the ID is set for the update
-	err = h.Service.UpdateRegion(&req)
+	regionModel := req.ToModel()
+	err = h.Service.UpdateRegion(&regionModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, req)
+	c.JSON(http.StatusOK, dto.RegionFromModel(regionModel))
 }
 
 // DeleteRegion handles DELETE /regions/:id

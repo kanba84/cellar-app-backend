@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cellar-app/dto"
 	"cellar-app/model"
 	"cellar-app/service"
 	"errors"
@@ -46,12 +47,13 @@ func (h *Handler) GetBottle(c *gin.Context) {
 }
 
 func (h *Handler) CreateBottle(c *gin.Context) {
-	var bottle model.Bottle
-	if err := c.ShouldBindJSON(&bottle); err != nil {
+	var request dto.BottleRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		fmt.Println("[CreateBottle] bind error:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
+	bottle := request.ToModel()
 	if err := validateCreateBottleRequest(bottle, false); err != nil {
 		fmt.Println("[CreateBottle] validation error:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
@@ -87,7 +89,7 @@ func (h *Handler) CreateBottle(c *gin.Context) {
 		}
 	}()
 
-	c.JSON(http.StatusCreated, bottle)
+	c.JSON(http.StatusCreated, dto.BottleFromModel(bottle))
 }
 
 func validateCreateBottleRequest(bottle model.Bottle, ignoreId bool) error {
@@ -143,12 +145,13 @@ func (h *Handler) UpdateBottle(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var bottle model.Bottle
-	if err := c.ShouldBindJSON(&bottle); err != nil {
+	var request dto.BottleRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		fmt.Println("[UpdateBottle] bind error:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
 		return
 	}
+	bottle := request.ToModel()
 	if err := validateRowNumberLimit(bottle.RowNumber); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
@@ -171,7 +174,7 @@ func (h *Handler) UpdateBottle(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, bottle)
+	c.JSON(http.StatusOK, dto.BottleFromModel(bottle))
 }
 
 func (h *Handler) PatchBottle(c *gin.Context) {

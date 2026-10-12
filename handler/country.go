@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"cellar-app/model"
+	"cellar-app/dto"
 	"net/http"
 	"strconv"
 
@@ -15,7 +15,11 @@ func (h *Handler) ListCountries(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list countries"})
 		return
 	}
-	c.JSON(http.StatusOK, countries)
+	response := make([]dto.CountryDTO, 0, len(countries))
+	for _, country := range countries {
+		response = append(response, dto.CountryFromModel(country))
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // GetCountry handles GET /countries/:id
@@ -31,21 +35,22 @@ func (h *Handler) GetCountry(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Country not found"})
 		return
 	}
-	c.JSON(http.StatusOK, country)
+	c.JSON(http.StatusOK, dto.CountryFromModel(*country))
 }
 
 // CreateCountry handles POST /countries
 func (h *Handler) CreateCountry(c *gin.Context) {
-	var country model.Country
-	if err := c.ShouldBindJSON(&country); err != nil {
+	var request dto.CountryDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
+	country := request.ToModel()
 	if err := h.Service.CreateCountry(&country); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create country"})
 		return
 	}
-	c.JSON(http.StatusCreated, country)
+	c.JSON(http.StatusCreated, dto.CountryFromModel(country))
 }
 
 // UpdateCountry handles PUT /countries/:id
@@ -56,17 +61,18 @@ func (h *Handler) UpdateCountry(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var country model.Country
-	if err := c.ShouldBindJSON(&country); err != nil {
+	var request dto.CountryDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
+	country := request.ToModel()
 	country.ID = id
 	if err := h.Service.UpdateCountry(&country); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update country"})
 		return
 	}
-	c.JSON(http.StatusOK, country)
+	c.JSON(http.StatusOK, dto.CountryFromModel(country))
 }
 
 // DeleteCountry handles DELETE /countries/:id

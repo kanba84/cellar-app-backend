@@ -1,7 +1,7 @@
 package service
 
 import (
-	"cellar-app/model"
+	"cellar-app/dto"
 	"fmt"
 	"sort"
 	"time"
@@ -10,7 +10,7 @@ import (
 // GetWineTypeStats: ワインタイプ別の在庫構成比を集計
 // RemovedAtがnullのボトル（在庫にある）のみを対象
 // countが多い順でソート
-func (s *Service) GetWineTypeStats() ([]model.WineTypeStats, error) {
+func (s *Service) GetWineTypeStats() ([]dto.WineTypeStats, error) {
 	bottles, err := s.BottleRepo.List()
 	if err != nil {
 		fmt.Printf("Error listing bottles for wine type stats: %v\n", err)
@@ -33,9 +33,9 @@ func (s *Service) GetWineTypeStats() ([]model.WineTypeStats, error) {
 	}
 
 	// 結果をスライスに変換
-	var stats []model.WineTypeStats
+	var stats []dto.WineTypeStats
 	for typeID, count := range wineTypeCounts {
-		stats = append(stats, model.WineTypeStats{
+		stats = append(stats, dto.WineTypeStats{
 			Name:  wineTypeMap[typeID],
 			Count: count,
 		})
@@ -52,7 +52,7 @@ func (s *Service) GetWineTypeStats() ([]model.WineTypeStats, error) {
 // GetCountryStats: 生産国別の在庫構成比を集計
 // RemovedAtがnullのボトル（在庫にある）のみを対象
 // countが多い順でソート
-func (s *Service) GetCountryStats() ([]model.CountryStats, error) {
+func (s *Service) GetCountryStats() ([]dto.CountryStats, error) {
 	bottles, err := s.BottleRepo.List()
 	if err != nil {
 		fmt.Printf("Error listing bottles for country stats: %v\n", err)
@@ -75,9 +75,9 @@ func (s *Service) GetCountryStats() ([]model.CountryStats, error) {
 	}
 
 	// 結果をスライスに変換
-	var stats []model.CountryStats
+	var stats []dto.CountryStats
 	for countryID, count := range countryCounts {
-		stats = append(stats, model.CountryStats{
+		stats = append(stats, dto.CountryStats{
 			Name:  countryMap[countryID],
 			Count: count,
 		})
@@ -95,7 +95,7 @@ func (s *Service) GetCountryStats() ([]model.CountryStats, error) {
 // days: 過去何日分のデータを取得するか（デフォルト30日）
 // 戻り値は日付昇順でソート済み
 // スナップショットが存在しない日については、最も近い直前のスナップショットで補完
-func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, error) {
+func (s *Service) GetInventoryTrend(days int) ([]dto.InventoryTrendDataPoint, error) {
 	if days <= 0 {
 		days = 30
 	}
@@ -120,7 +120,7 @@ func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, 
 	}
 
 	// 対象期間の全日付でデータを生成
-	var data []model.InventoryTrendDataPoint
+	var data []dto.InventoryTrendDataPoint
 	lastKnownCount := 0
 	lastSnapshotFound := false
 
@@ -137,20 +137,20 @@ func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, 
 		if count, exists := snapshotMap[dateStr]; exists {
 			lastKnownCount = count
 			lastSnapshotFound = true
-			data = append(data, model.InventoryTrendDataPoint{
+			data = append(data, dto.InventoryTrendDataPoint{
 				Date:  dateStr,
 				Count: count,
 			})
 		} else {
 			// スナップショットが存在しない場合は、最後に見つかったスナップショットで補完
 			if lastSnapshotFound {
-				data = append(data, model.InventoryTrendDataPoint{
+				data = append(data, dto.InventoryTrendDataPoint{
 					Date:  dateStr,
 					Count: lastKnownCount,
 				})
 			} else {
 				// スナップショットがまったく存在しない場合は0
-				data = append(data, model.InventoryTrendDataPoint{
+				data = append(data, dto.InventoryTrendDataPoint{
 					Date:  dateStr,
 					Count: 0,
 				})
@@ -165,7 +165,7 @@ func (s *Service) GetInventoryTrend(days int) ([]model.InventoryTrendDataPoint, 
 // RemovedAtがnullのボトル（在庫にある）のみを対象
 // Vintageがnullのワインは除外
 // countが多い順でソート
-func (s *Service) GetVintageStats() ([]model.VintageStats, error) {
+func (s *Service) GetVintageStats() ([]dto.VintageStats, error) {
 	bottles, err := s.BottleRepo.List()
 	if err != nil {
 		fmt.Printf("Error listing bottles for vintage stats: %v\n", err)
@@ -191,9 +191,9 @@ func (s *Service) GetVintageStats() ([]model.VintageStats, error) {
 	}
 
 	// 結果をスライスに変換
-	var stats []model.VintageStats
+	var stats []dto.VintageStats
 	for vintage, count := range vintageCounts {
-		stats = append(stats, model.VintageStats{
+		stats = append(stats, dto.VintageStats{
 			Vintage: vintage,
 			Count:   count,
 		})
@@ -208,7 +208,7 @@ func (s *Service) GetVintageStats() ([]model.VintageStats, error) {
 }
 
 // GetStats: すべての統計情報を取得
-func (s *Service) GetStats(days int) (*model.Stats, error) {
+func (s *Service) GetStats(days int) (*dto.Stats, error) {
 	wineTypeStats, err := s.GetWineTypeStats()
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func (s *Service) GetStats(days int) (*model.Stats, error) {
 		return nil, err
 	}
 
-	return &model.Stats{
+	return &dto.Stats{
 		WineTypes:      wineTypeStats,
 		Countries:      countryStats,
 		Vintages:       vintageStats,

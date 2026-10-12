@@ -99,6 +99,7 @@ func (s *Service) FetchAndSaveWineInfo(ctx context.Context, wine *model.Wine) (*
 
 		wineGrapes := make([]model.WineGrape, 0, len(info.Grapes))
 		for order, grapeInfo := range info.Grapes {
+			displayOrder := order
 			normalizedName := grapeInfo.NormalizedName
 			if normalizedName == "" {
 				normalizedName = llm.NormalizeGrapeName(grapeInfo.Name)
@@ -113,7 +114,7 @@ func (s *Service) FetchAndSaveWineInfo(ctx context.Context, wine *model.Wine) (*
 				WineID:       wine.ID,
 				GrapeID:      grape.ID,
 				Percentage:   grapeInfo.Percentage,
-				DisplayOrder: order,
+				DisplayOrder: &displayOrder,
 			}
 			wineGrapes = append(wineGrapes, wineGrape)
 		}

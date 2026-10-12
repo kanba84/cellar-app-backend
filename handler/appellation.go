@@ -1,12 +1,14 @@
 package handler
 
 import (
-	"cellar-app/model"
+	"cellar-app/dto"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (h *Handler) ListAppellations(c *gin.Context) {
@@ -15,7 +17,11 @@ func (h *Handler) ListAppellations(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve appellations"})
 		return
 	}
-	c.JSON(http.StatusOK, appellations)
+	response := make([]dto.AppellationDTO, 0, len(appellations))
+	for _, appellation := range appellations {
+		response = append(response, dto.AppellationFromModel(appellation))
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) GetAppellation(c *gin.Context) {
@@ -27,27 +33,28 @@ func (h *Handler) GetAppellation(c *gin.Context) {
 	id := uint(id64)
 	appellation, err := h.Service.GetAppellation(id)
 	if err != nil {
-		if err.Error() == "not found" {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "appellation not found"})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve appellation"})
 		}
 		return
 	}
-	c.JSON(http.StatusOK, appellation)
+	c.JSON(http.StatusOK, dto.AppellationFromModel(*appellation))
 }
 
 func (h *Handler) CreateAppellation(c *gin.Context) {
-	var appellation model.Appellation
-	if err := c.ShouldBindJSON(&appellation); err != nil {
+	var request dto.AppellationDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
+	appellation := request.ToModel()
 	if err := h.Service.CreateAppellation(&appellation); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create appellation"})
 		return
 	}
-	c.JSON(http.StatusCreated, appellation)
+	c.JSON(http.StatusCreated, dto.AppellationFromModel(appellation))
 }
 
 func (h *Handler) UpdateAppellation(c *gin.Context) {
@@ -57,17 +64,18 @@ func (h *Handler) UpdateAppellation(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var appellation model.Appellation
-	if err := c.ShouldBindJSON(&appellation); err != nil {
+	var request dto.AppellationDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
 		return
 	}
+	appellation := request.ToModel()
 	appellation.ID = id
 	if err := h.Service.UpdateAppellation(&appellation); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update appellation: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, appellation)
+	c.JSON(http.StatusOK, dto.AppellationFromModel(appellation))
 }
 
 func (h *Handler) DeleteAppellation(c *gin.Context) {
