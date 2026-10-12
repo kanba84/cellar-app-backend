@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cellar-app/dto"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -148,5 +149,5 @@ func (h *Handler) GetDailySnapshot(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, snapshot)
+	c.JSON(http.StatusOK, dto.SnapshotFromModel(*snapshot))
 }

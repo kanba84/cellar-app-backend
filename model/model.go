@@ -3,202 +3,104 @@ package model
 import "time"
 
 type Wine struct {
-	ID                  uint         `gorm:"primaryKey" json:"id"`
-	Name                string       `gorm:"size:255;not null" json:"name"`
-	CountryID           uint         `gorm:"not null" json:"country_id"`
-	Country             Country      `gorm:"foreignKey:CountryID" json:"country,omitempty"`
-	WineTypeID          uint         `gorm:"not null" json:"wine_type_id"`
-	WineType            WineType     `gorm:"foreignKey:WineTypeID" json:"wine_type,omitempty"`
-	Vintage             *int         `json:"vintage"`
-	DrinkingWindowStart *int         `json:"drinking_window_start"`
-	DrinkingWindowEnd   *int         `json:"drinking_window_end"`
-	RegionID            *uint        `json:"region_id"`
-	Region              *Region      `gorm:"foreignKey:RegionID" json:"region,omitempty"`
-	Producer            *string      `gorm:"size:255" json:"producer"`
-	AppellationID       *uint        `json:"appellation_id"`
-	Appellation         *Appellation `gorm:"foreignKey:AppellationID" json:"appellation,omitempty"`
-	LabelImageURL       *string      `gorm:"size:512" json:"label_image_url"`
-	ReferencePrice      *float64     `json:"reference_price"`
-	WineGrapes          []WineGrape  `gorm:"foreignKey:WineID" json:"wine_grapes,omitempty"`
-}
-
-// WineDTOは、APIレスポンス用のWineデータを表す構造体です。
-// Wine構造体をベースに、必要なフィールドのみを含めています。
-type WineDTO struct {
-	ID                  int            `json:"id"`
-	Name                string         `json:"name"`
-	CountryID           int            `json:"country_id"`
-	CountryName         string         `json:"country_name"`
-	CountryISOCode      string         `json:"country_iso_code"`
-	WineTypeID          int            `json:"wine_type_id"`
-	WinTypeName         string         `json:"wine_type_name"`
-	Vintage             *int           `json:"vintage"`
-	DrinkingWindowStart *int           `json:"drinking_window_start"`
-	DrinkingWindowEnd   *int           `json:"drinking_window_end"`
-	RegionID            *int           `json:"region_id"`
-	RegionName          *string        `json:"region_name"`
-	Producer            *string        `json:"producer"`
-	AppellationID       *int           `json:"appellation_id"`
-	AppellationName     *string        `json:"appellation_name"`
-	DesignationTypeID   *int           `json:"designation_type_id"`
-	DesignationTypeName *string        `json:"designation_type_name"`
-	LabelImageURL       *string        `json:"label_image_url"`
-	ReferencePrice      *float64       `json:"reference_price"`
-	WineGrapes          []WineGrapeDTO `json:"wine_grapes,omitempty"`
-
-	HasStock   bool  `json:"has_stock"`
-	StockCount int64 `json:"stock_count"`
-}
-
-type WineGrapeDTO struct {
-	Percentage   *float64 `json:"percentage"`
-	DisplayOrder int      `json:"display_order"`
-	Name         string   `json:"name"`
+	ID                  uint     `gorm:"type:integer;primaryKey"`
+	Name                string   `gorm:"size:255;not null"`
+	CountryID           uint     `gorm:"type:integer;not null"`
+	Country             Country  `gorm:"foreignKey:CountryID;constraint:wines_country_id_fkey,OnDelete:NO ACTION"`
+	WineTypeID          uint     `gorm:"type:integer;not null"`
+	WineType            WineType `gorm:"foreignKey:WineTypeID;constraint:wines_wine_type_id_fkey,OnDelete:NO ACTION"`
+	Vintage             *int     `gorm:"check:wines_vintage_check,vintage >= 1800 AND vintage <= date_part('year', CURRENT_DATE)"`
+	DrinkingWindowStart *int
+	DrinkingWindowEnd   *int
+	RegionID            *uint        `gorm:"type:integer"`
+	Region              *Region      `gorm:"foreignKey:RegionID;constraint:wines_region_id_fkey,OnDelete:NO ACTION"`
+	Producer            *string      `gorm:"size:255"`
+	AppellationID       *uint        `gorm:"type:integer"`
+	Appellation         *Appellation `gorm:"foreignKey:AppellationID;constraint:wines_appellation_id_fkey,OnDelete:SET NULL"`
+	LabelImageURL       *string      `gorm:"size:512"`
+	ReferencePrice      *float64
+	WineGrapes          []WineGrape `gorm:"foreignKey:WineID"`
 }
 
 type Bottle struct {
-	ID           uint       `gorm:"primaryKey" json:"id"`
-	WineID       uint       `gorm:"not null" json:"wine_id"`
-	Wine         Wine       `gorm:"foreignKey:WineID" json:"wine,omitempty"`
-	IsOpened     bool       `json:"is_opened"`
-	AddedAt      *time.Time `json:"added_at"`
-	RemovedAt    *time.Time `json:"removed_at"`
-	RowNumber    *int       `json:"row_number"`
-	ColumnNumber *int       `json:"column_number"`
-	Note         *string    `gorm:"size:512" json:"note"`
-}
-
-type BottleWithWineDTO struct {
-	ID           int        `json:"id"`
-	IsOpened     bool       `json:"is_opened"`
-	AddedAt      *time.Time `json:"added_at"`
-	RemovedAt    *time.Time `json:"removed_at"`
-	RowNumber    *int       `json:"row_number"`
-	ColumnNumber *int       `json:"column_number"`
-	Note         *string    `json:"note"`
-
-	Wine WineDTO `json:"wine"`
+	ID           uint       `gorm:"type:integer;primaryKey"`
+	WineID       uint       `gorm:"type:integer;not null"`
+	Wine         Wine       `gorm:"foreignKey:WineID;constraint:cellar_bottles_wine_id_fkey,OnDelete:CASCADE"`
+	IsOpened     *bool      `gorm:"default:false"`
+	AddedAt      *time.Time `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	RemovedAt    *time.Time `gorm:"type:timestamp"`
+	RowNumber    *int       `gorm:"type:integer;uniqueIndex:unique_position"`
+	ColumnNumber *int       `gorm:"type:integer;uniqueIndex:unique_position"`
+	Note         *string    `gorm:"type:text"`
 }
 
 type WineType struct {
-	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"size:255;not null;uniqueIndex" json:"name"`
+	ID   uint   `gorm:"type:integer;primaryKey"`
+	Name string `gorm:"size:255;not null;uniqueIndex"`
 }
 
 type Country struct {
-	ID      uint   `gorm:"primaryKey" json:"id"`
-	Name    string `gorm:"size:255;not null;uniqueIndex" json:"name"`
-	ISOCode string `gorm:"size:2" json:"iso_code"`
+	ID      uint    `gorm:"type:integer;primaryKey"`
+	Name    string  `gorm:"size:255;not null;uniqueIndex"`
+	ISOCode *string `gorm:"size:2"`
 }
 
 type Region struct {
-	ID        uint    `gorm:"primaryKey" json:"id"`
-	Name      string  `gorm:"size:255;not null" json:"name"`
-	CountryID uint    `gorm:"not null" json:"country_id"`
-	Country   Country `gorm:"foreignKey:CountryID" json:"country,omitempty"`
-	ParentID  *uint   `json:"parent_id"` // 親地域のID
+	ID        uint    `gorm:"type:integer;primaryKey"`
+	Name      string  `gorm:"size:255;not null;uniqueIndex:regions_name_parent_id_key"`
+	CountryID uint    `gorm:"type:integer;not null"`
+	Country   Country `gorm:"foreignKey:CountryID;constraint:regions_country_id_fkey,OnDelete:NO ACTION"`
+	ParentID  *uint   `gorm:"uniqueIndex:regions_name_parent_id_key"`
 }
 
 type Appellation struct {
-	ID                uint             `gorm:"primaryKey" json:"id"`
-	Name              string           `gorm:"size:255;not null" json:"name"`
-	DesignationTypeID *uint            `json:"designation_type_id"`
-	DesignationType   *DesignationType `gorm:"foreignKey:DesignationTypeID" json:"designation_type,omitempty"`
-	RegionID          *uint            `json:"region_id"`
-	Region            *Region          `gorm:"foreignKey:RegionID" json:"region,omitempty"`
+	ID                uint             `gorm:"type:integer;primaryKey"`
+	Name              string           `gorm:"size:255;not null"`
+	DesignationTypeID *uint            `gorm:"type:integer"`
+	DesignationType   *DesignationType `gorm:"foreignKey:DesignationTypeID;constraint:appellations_designation_type_id_fkey,OnDelete:SET NULL"`
+	RegionID          *uint            `gorm:"type:integer"`
+	Region            *Region          `gorm:"foreignKey:RegionID;constraint:appellations_region_id_fkey,OnDelete:CASCADE"`
 }
 
 type DesignationType struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Name      string `gorm:"size:255;not null" json:"name"`
-	Code      string `gorm:"size:50" json:"code"`
-	Rank      int    `json:"rank"`
-	CountryID uint   `json:"country_id"`
+	ID        uint   `gorm:"type:integer;primaryKey"`
+	Name      string `gorm:"size:255;not null"`
+	Code      string `gorm:"size:50"`
+	Rank      int
+	CountryID *uint
 }
 
-type CreateWineWithBottleRequest struct {
-	Wine   Wine   `json:"wine"`
-	Bottle Bottle `json:"bottle"`
-}
-
-// 統計情報のレスポンス構造体
-
-// WineTypeStats: ワインタイプ別の在庫構成比
-type WineTypeStats struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
-}
-
-// CountryStats: 生産国別の在庫構成比
-type CountryStats struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
-}
-
-// InventoryTrendDataPoint: 在庫数推移のデータポイント
-type InventoryTrendDataPoint struct {
-	Date  string `json:"date"` // YYYY-MM-DD format
-	Count int    `json:"count"`
-}
-
-// VintageStats: ワインのビンテージ別の在庫構成比
-type VintageStats struct {
-	Vintage int `json:"vintage"`
-	Count   int `json:"count"`
-}
-
-// Stats: すべての統計情報
-type Stats struct {
-	WineTypes      []WineTypeStats           `json:"wineTypes"`
-	Countries      []CountryStats            `json:"countries"`
-	Vintages       []VintageStats            `json:"vintages"`
-	InventoryTrend []InventoryTrendDataPoint `json:"inventoryTrend"`
-}
-
-// InventoryDailySnapshot: 日次在庫スナップショット
 type InventoryDailySnapshot struct {
-	SnapshotDate time.Time                      `gorm:"primaryKey;column:snapshot_date" json:"snapshot_date"`
-	TotalCount   int                            `gorm:"column:total_count" json:"total_count"`
-	CreatedAt    time.Time                      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt    time.Time                      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
-	Details      []InventoryDailySnapshotDetail `gorm:"foreignKey:SnapshotDate;references:SnapshotDate" json:"details,omitempty"`
+	SnapshotDate time.Time                      `gorm:"type:date;primaryKey;column:snapshot_date"`
+	TotalCount   int                            `gorm:"type:integer;not null;column:total_count"`
+	CreatedAt    time.Time                      `gorm:"not null;default:CURRENT_TIMESTAMP;column:created_at;autoCreateTime"`
+	UpdatedAt    time.Time                      `gorm:"not null;default:CURRENT_TIMESTAMP;column:updated_at;autoUpdateTime"`
+	Details      []InventoryDailySnapshotDetail `gorm:"foreignKey:SnapshotDate;references:SnapshotDate;constraint:fk_snapshot_date,OnDelete:CASCADE"`
 }
 
-// InventoryDailySnapshotDetail: 日次在庫スナップショット詳細
 type InventoryDailySnapshotDetail struct {
-	ID           uint      `gorm:"primaryKey;column:id" json:"id"`
-	SnapshotDate time.Time `gorm:"column:snapshot_date;index" json:"snapshot_date"`
-	CategoryType string    `gorm:"column:category_type" json:"category_type"` // wine_type, country, vintage
-	CategoryID   *int      `gorm:"column:category_id" json:"category_id"`
-	CategoryName *string   `gorm:"column:category_name" json:"category_name"`
-	Count        int       `gorm:"column:count" json:"count"`
-	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	ID           uint      `gorm:"primaryKey;column:id"`
+	SnapshotDate time.Time `gorm:"type:date;not null;column:snapshot_date;index:idx_snapshot_details_date"`
+	CategoryType string    `gorm:"type:text;not null;column:category_type;index:idx_snapshot_details_category;check:inventory_daily_snapshot_details_category_type_check,category_type IN ('wine_type','country','vintage')"`
+	CategoryID   *int      `gorm:"type:integer;column:category_id;index:idx_snapshot_details_category"`
+	CategoryName *string   `gorm:"type:text;column:category_name"`
+	Count        int       `gorm:"type:integer;not null;column:count"`
+	CreatedAt    time.Time `gorm:"not null;default:CURRENT_TIMESTAMP;column:created_at;autoCreateTime"`
 }
 
-// Grape: ブドウ品種
 type Grape struct {
-	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"size:255;not null;uniqueIndex" json:"name"`
+	ID   uint   `gorm:"primaryKey"`
+	Name string `gorm:"size:255;not null;uniqueIndex"`
 }
 
-// WineGrape: Wine と Grape の多対多リレーション（明示的な中間テーブル）
 type WineGrape struct {
-	WineID       uint     `gorm:"primaryKey;column:wine_id" json:"wine_id"`
-	GrapeID      uint     `gorm:"primaryKey;column:grape_id" json:"grape_id"`
-	Percentage   *float64 `gorm:"column:percentage" json:"percentage"`
-	DisplayOrder int      `gorm:"column:display_order" json:"display_order"`
-	Grape        Grape    `gorm:"foreignKey:GrapeID" json:"grape,omitempty"`
-	Wine         *Wine    `gorm:"foreignKey:WineID" json:"wine,omitempty"`
+	WineID       uint     `gorm:"primaryKey;column:wine_id"`
+	GrapeID      uint     `gorm:"primaryKey;column:grape_id"`
+	Percentage   *float64 `gorm:"column:percentage"`
+	DisplayOrder *int     `gorm:"column:display_order"`
+	Grape        Grape    `gorm:"foreignKey:GrapeID"`
 }
 
-// TableName: WineGrape テーブル名を明示的に指定
 func (WineGrape) TableName() string {
 	return "wine_grapes"
-}
-
-// LLMWineInfo: LLM から取得したワイン情報
-type LLMWineInfo struct {
-	Producer    *string `json:"producer"`
-	Grapes      []Grape `json:"grapes"`
-	TastingNote *string `json:"tasting_note"`
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"cellar-app/dto"
 	"cellar-app/model"
 	"cellar-app/service"
 
@@ -52,12 +53,13 @@ func (h *Handler) GetWine(c *gin.Context) {
 }
 
 func (h *Handler) CreateWine(c *gin.Context) {
-	var wine model.Wine
-	if err := c.ShouldBindJSON(&wine); err != nil {
+	var request dto.WineRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		log.Printf("CreateWine bind error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
+	wine := request.ToModel()
 	if err := validateCreateWineRequest(wine); err != nil {
 		log.Printf("CreateWine validation error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
@@ -72,7 +74,7 @@ func (h *Handler) CreateWine(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create wine"})
 		return
 	}
-	c.JSON(http.StatusCreated, wine)
+	c.JSON(http.StatusCreated, dto.WineFromModel(wine))
 }
 
 func validateCreateWineRequest(wine model.Wine) error {
@@ -96,7 +98,7 @@ func validateDrinkingWindow(start, end *int) error {
 }
 
 func (h *Handler) CreateWineWithBottle(c *gin.Context) {
-	var req model.CreateWineWithBottleRequest
+	var req dto.CreateWineWithBottleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("CreateWineWithBottle bind error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
@@ -128,17 +130,20 @@ func (h *Handler) CreateWineWithBottle(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create wine and bottle"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"wine": wine, "bottle": bottle})
+	c.JSON(http.StatusOK, gin.H{
+		"wine":   dto.WineFromModel(wine),
+		"bottle": dto.BottleFromModel(bottle),
+	})
 }
 
-func validateCreateWineWithBottleRequest(req model.CreateWineWithBottleRequest) error {
-	if validateCreateWineRequest(req.Wine) != nil {
+func validateCreateWineWithBottleRequest(req dto.CreateWineWithBottleRequest) error {
+	if validateCreateWineRequest(req.Wine.ToModel()) != nil {
 		return fmt.Errorf("invalid wine data")
 	}
 	if err := validateDrinkingWindow(req.Wine.DrinkingWindowStart, req.Wine.DrinkingWindowEnd); err != nil {
 		return err
 	}
-	if validateCreateBottleRequest(req.Bottle, true) != nil {
+	if validateCreateBottleRequest(req.Bottle.ToModel(), true) != nil {
 		return fmt.Errorf("invalid bottle data")
 	}
 	return nil
@@ -168,12 +173,13 @@ func (h *Handler) UpdateWine(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var wine model.Wine
-	if err := c.ShouldBindJSON(&wine); err != nil {
+	var request dto.WineRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		log.Printf("UpdateWine bind error: %v", err) // 追加
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input" + err.Error()})
 		return
 	}
+	wine := request.ToModel()
 	wine.ID = id
 	if err := validateDrinkingWindow(wine.DrinkingWindowStart, wine.DrinkingWindowEnd); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
@@ -184,7 +190,7 @@ func (h *Handler) UpdateWine(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update wine" + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, wine)
+	c.JSON(http.StatusOK, dto.WineFromModel(wine))
 }
 
 func (h *Handler) PatchWine(c *gin.Context) {
@@ -197,7 +203,7 @@ func (h *Handler) PatchWine(c *gin.Context) {
 	id := uint(id64)
 	contentType := c.ContentType()
 	updates := make(map[string]interface{})
-	var wineGrapes []model.WineGrapeDTO
+	var wineGrapes []dto.WineGrapeDTO
 
 	// --- multipart/form-data の場合（画像を含む） ---
 	if strings.HasPrefix(contentType, "multipart/form-data") {

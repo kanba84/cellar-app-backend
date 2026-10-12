@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"cellar-app/model"
+	"cellar-app/dto"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,7 +15,11 @@ func (h *Handler) ListDesignationTypes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve designation types"})
 		return
 	}
-	c.JSON(http.StatusOK, designationTypes)
+	response := make([]dto.DesignationTypeDTO, 0, len(designationTypes))
+	for _, designationType := range designationTypes {
+		response = append(response, dto.DesignationTypeFromModel(designationType))
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) GetDesignationType(c *gin.Context) {
@@ -34,20 +38,21 @@ func (h *Handler) GetDesignationType(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, designationType)
+	c.JSON(http.StatusOK, dto.DesignationTypeFromModel(*designationType))
 }
 
 func (h *Handler) CreateDesignationType(c *gin.Context) {
-	var designationType model.DesignationType
-	if err := c.ShouldBindJSON(&designationType); err != nil {
+	var request dto.DesignationTypeDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input: " + err.Error()})
 		return
 	}
+	designationType := request.ToModel()
 	if err := h.Service.CreateDesignationType(&designationType); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create designation type"})
 		return
 	}
-	c.JSON(http.StatusCreated, designationType)
+	c.JSON(http.StatusCreated, dto.DesignationTypeFromModel(designationType))
 }
 
 func (h *Handler) UpdateDesignationType(c *gin.Context) {
@@ -57,17 +62,18 @@ func (h *Handler) UpdateDesignationType(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var designationType model.DesignationType
-	if err := c.ShouldBindJSON(&designationType); err != nil {
+	var request dto.DesignationTypeDTO
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid input, %s", err.Error())})
 		return
 	}
+	designationType := request.ToModel()
 	designationType.ID = id
 	if err := h.Service.UpdateDesignationType(&designationType); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update designation type: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, designationType)
+	c.JSON(http.StatusOK, dto.DesignationTypeFromModel(designationType))
 }
 
 func (h *Handler) DeleteDesignationType(c *gin.Context) {

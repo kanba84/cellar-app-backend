@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cellar-app/dto"
 	"cellar-app/model"
 	"context"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Service) ListWines() ([]model.WineDTO, error) {
+func (s *Service) ListWines() ([]dto.WineDTO, error) {
 	wines, err := s.WineRepo.List()
 	if err != nil {
 		return nil, err
@@ -23,7 +24,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 		return nil, err
 	}
 
-	var result []model.WineDTO
+	var result []dto.WineDTO
 
 	for _, w := range wines {
 
@@ -40,7 +41,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 			appellationID = &v
 		}
 
-		dto := model.WineDTO{
+		dto := dto.WineDTO{
 			ID:                  int(w.ID),
 			Name:                w.Name,
 			Vintage:             w.Vintage,
@@ -56,7 +57,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 			// ★ ここは基本そのままでOK（Preload前提）
 			WinTypeName:    w.WineType.Name,
 			CountryName:    w.Country.Name,
-			CountryISOCode: w.Country.ISOCode,
+			CountryISOCode: countryISOCode(w.Country.ISOCode),
 		}
 
 		stockCount := countsByWineID[w.ID]
@@ -85,7 +86,7 @@ func (s *Service) ListWines() ([]model.WineDTO, error) {
 	return result, nil
 }
 
-func (s *Service) GetWine(id uint) (*model.WineDTO, error) {
+func (s *Service) GetWine(id uint) (*dto.WineDTO, error) {
 	wine, err := s.WineRepo.GetByID(id)
 	if err != nil {
 		fmt.Printf("Error retrieving wine with ID %d: %v\n", id, err)
@@ -131,19 +132,22 @@ func (s *Service) CreateWine(wine *model.Wine) error {
 	return nil
 }
 
-func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWineWithBottleRequest) (model.Wine, model.Bottle, error) {
+func (s *Service) CreateWineWithBottle(ctx context.Context, req dto.CreateWineWithBottleRequest) (model.Wine, model.Bottle, error) {
+	wineModel := req.Wine.ToModel()
+	bottleModel := req.Bottle.ToModel()
+
 	// ラベル画像URLが未設定の場合、デフォルト値を設定
-	if req.Wine.LabelImageURL == nil {
-		if req.Wine.WineTypeID == 1 {
+	if wineModel.LabelImageURL == nil {
+		if wineModel.WineTypeID == 1 {
 			defaultURL := "/labels/sample_thumbnail.png"
-			req.Wine.LabelImageURL = &defaultURL
+			wineModel.LabelImageURL = &defaultURL
 		} else {
 			defaultURL := "/labels/sample_thumbnail2.png"
-			req.Wine.LabelImageURL = &defaultURL
+			wineModel.LabelImageURL = &defaultURL
 		}
 	}
 
-	wine, bottle, err := s.WineRepo.CreateWithBottle(ctx, &req.Wine, &req.Bottle)
+	wine, bottle, err := s.WineRepo.CreateWithBottle(ctx, &wineModel, &bottleModel)
 	if err != nil {
 		if IsUniqueViolation(err) {
 			return model.Wine{}, model.Bottle{}, ErrPositionOccupied
@@ -156,8 +160,8 @@ func (s *Service) CreateWineWithBottle(ctx context.Context, req model.CreateWine
 
 // ヘルパー関数
 // convertWineToDTO: Wine構造体をWineDTO構造体に変換
-func convertWineToDTO(wine *model.Wine) model.WineDTO {
-	dto := model.WineDTO{
+func convertWineToDTO(wine *model.Wine) dto.WineDTO {
+	dto := dto.WineDTO{
 		ID:                  int(wine.ID),
 		Name:                wine.Name,
 		Vintage:             wine.Vintage,
@@ -171,7 +175,7 @@ func convertWineToDTO(wine *model.Wine) model.WineDTO {
 		WineGrapes:          convertWineGrapesToDTO(wine.WineGrapes),
 		WinTypeName:         wine.WineType.Name,
 		CountryName:         wine.Country.Name,
-		CountryISOCode:      wine.Country.ISOCode,
+		CountryISOCode:      countryISOCode(wine.Country.ISOCode),
 	}
 
 	if wine.RegionID != nil {
@@ -199,16 +203,27 @@ func convertWineToDTO(wine *model.Wine) model.WineDTO {
 	return dto
 }
 
-func convertWineGrapesToDTO(wineGrapes []model.WineGrape) []model.WineGrapeDTO {
-	result := make([]model.WineGrapeDTO, 0, len(wineGrapes))
+func countryISOCode(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func convertWineGrapesToDTO(wineGrapes []model.WineGrape) []dto.WineGrapeDTO {
+	result := make([]dto.WineGrapeDTO, 0, len(wineGrapes))
 	for _, wg := range wineGrapes {
 		name := ""
 		if wg.Grape.ID != 0 {
 			name = wg.Grape.Name
 		}
-		result = append(result, model.WineGrapeDTO{
+		displayOrder := 0
+		if wg.DisplayOrder != nil {
+			displayOrder = *wg.DisplayOrder
+		}
+		result = append(result, dto.WineGrapeDTO{
 			Percentage:   wg.Percentage,
-			DisplayOrder: wg.DisplayOrder,
+			DisplayOrder: displayOrder,
 			Name:         name,
 		})
 	}
@@ -248,7 +263,7 @@ func (s *Service) PatchWine(id uint, updates map[string]interface{}) error {
 // UpdateWineWithGrapes: ワイン情報とWineGrapesを更新します
 // grapes が空でない場合は既存の WineGrapes を削除して新しく作成します
 // 新しいブドウが必要な場合は自動作成します
-func (s *Service) UpdateWineWithGrapes(ctx context.Context, wineID uint, updates map[string]interface{}, grapes []model.WineGrapeDTO) error {
+func (s *Service) UpdateWineWithGrapes(ctx context.Context, wineID uint, updates map[string]interface{}, grapes []dto.WineGrapeDTO) error {
 	if wineID == 0 {
 		return fmt.Errorf("wine id is required")
 	}
@@ -277,6 +292,7 @@ func (s *Service) UpdateWineWithGrapes(ctx context.Context, wineID uint, updates
 		// 新しい WineGrapes を作成
 		wineGrapes := make([]model.WineGrape, 0, len(grapes))
 		for order, grapeDTO := range grapes {
+			displayOrder := order
 			// ブドウ名から既存ブドウを検索または作成
 			// WineGrapeDTO.Name はノーマライズされたブドウ名を使用
 			normalizedName := grapeDTO.Name
@@ -293,7 +309,7 @@ func (s *Service) UpdateWineWithGrapes(ctx context.Context, wineID uint, updates
 				WineID:       wineID,
 				GrapeID:      grape.ID,
 				Percentage:   grapeDTO.Percentage,
-				DisplayOrder: order,
+				DisplayOrder: &displayOrder,
 			}
 			wineGrapes = append(wineGrapes, wineGrape)
 		}

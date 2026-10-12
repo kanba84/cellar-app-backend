@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"cellar-app/model"
+	"cellar-app/dto"
 	"net/http"
 	"strconv"
 
@@ -14,7 +14,11 @@ func (h *Handler) ListWineTypes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list wine types"})
 		return
 	}
-	c.JSON(http.StatusOK, wineTypes)
+	response := make([]dto.WineTypeDTO, 0, len(wineTypes))
+	for _, wineType := range wineTypes {
+		response = append(response, dto.WineTypeFromModel(wineType))
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) GetWineType(c *gin.Context) {
@@ -29,21 +33,22 @@ func (h *Handler) GetWineType(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "wine type not found"})
 		return
 	}
-	c.JSON(http.StatusOK, wineType)
+	c.JSON(http.StatusOK, dto.WineTypeFromModel(*wineType))
 }
 
 func (h *Handler) CreateWineType(c *gin.Context) {
-	var req model.WineType
+	var req dto.WineTypeDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	err := h.Service.CreateWineType(&req)
+	wineTypeModel := req.ToModel()
+	err := h.Service.CreateWineType(&wineTypeModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create wine type"})
 		return
 	}
-	c.JSON(http.StatusCreated, req)
+	c.JSON(http.StatusCreated, dto.WineTypeFromModel(wineTypeModel))
 }
 
 func (h *Handler) UpdateWineType(c *gin.Context) {
@@ -53,18 +58,19 @@ func (h *Handler) UpdateWineType(c *gin.Context) {
 		return
 	}
 	id := uint(id64)
-	var req model.WineType
+	var req dto.WineTypeDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 	req.ID = id // Ensure the ID is set for the update
-	err = h.Service.UpdateWineType(&req)
+	wineTypeModel := req.ToModel()
+	err = h.Service.UpdateWineType(&wineTypeModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update wine type"})
 		return
 	}
-	c.JSON(http.StatusOK, req)
+	c.JSON(http.StatusOK, dto.WineTypeFromModel(wineTypeModel))
 }
 
 func (h *Handler) DeleteWineType(c *gin.Context) {
