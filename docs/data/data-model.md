@@ -4,7 +4,7 @@
 
 本書はバックエンドの GORM 永続化モデル `cellar-app-backend/model/model.go` と `cellar-app-backend/database/migrate.go` を基準に、エンティティとデータの関係を説明します。カラムの詳細とコード上の型・NULL・制約は[データディクショナリ](./data-dictionary.md)、API の入出力構造は `cellar-app-backend/dto/dto.go` を参照してください。
 
-本書の図と説明はモデル上の関連です。実 DB へ接続して制約の実在を確認したものではありません。GORM の命名規則や関連推論による制約は、実 DB で確認されるまで未検証として扱います。
+本書はモデル定義を基準に記載し、2026-10-13 に確認した実 DB との差分のみを「実 DB との差分」節に記載します。同節に記載のない対象項目は、確認した `cellar_app.public` の状態とモデル定義が整合していました。確認結果は当該 DB・当該時点に限られ、他環境や将来のスキーマを保証するものではありません。
 
 ## 全体像
 
@@ -32,7 +32,7 @@ erDiagram
         varchar name
     }
     DESIGNATION_TYPES {
-        integer id PK
+        uint id PK
         varchar name
         varchar code
         int rank
@@ -92,7 +92,7 @@ erDiagram
     }
 ```
 
-ER 図の `integer`、`varchar` 等は明示タグまたは GORM の一般的なマッピングを図示したものです。特に明示的な型タグのない `uint`、`int`、`float64` が実 DB 上でどの物理型になっているかは、PostgreSQL の稼働スキーマを確認していません。関係の任意性は nullable な外部キー列に基づきます。地域の親子関係はモデルに FK 関連として定義されていないため、図に含めていません。
+ER 図はモデル定義を基準にした図です。実 DB にのみ存在する関連は「実 DB との差分」に記載しています。
 
 ## テーブルの責務
 
@@ -100,8 +100,8 @@ ER 図の `integer`、`varchar` 等は明示タグまたは GORM の一般的な
 |---|---|---|
 | `countries` | 国マスター | 地域とワインの必須参照先 |
 | `wine_types` | ワイン種別マスター | ワインの必須参照先 |
-| `designation_types` | 呼称・格付け種別マスター | アペラシオンから任意参照。モデル上 Country 外部キー関連は定義されていない |
-| `regions` | 国に属する地域 | 国を必須参照。`parent_id` による階層値はあるが自己参照関連は未定義 |
+| `designation_types` | 呼称・格付け種別マスター | アペラシオンから任意参照 |
+| `regions` | 国に属する地域 | 国を必須参照。`parent_id` による階層値を保持 |
 | `appellations` | 地域に関連付ける呼称 | 地域と呼称種別をそれぞれ任意参照 |
 | `wines` | ワインそのものの情報 | 国とワイン種別を必須参照。地域とアペラシオンは任意 |
 | `bottles` | 個々のボトル・セラー在庫 | ワインを必須参照。位置、開封、入庫・除外情報を保持 |
@@ -117,12 +117,21 @@ ER 図の `integer`、`varchar` 等は明示タグまたは GORM の一般的な
 - **呼称種別―アペラシオン:** アペラシオン側の参照は任意で、呼称種別削除時のポリシーは `SET NULL` です。
 - **地域／アペラシオン―ワイン:** ワイン側の参照は任意です。地域参照は `NO ACTION`、アペラシオン参照は `SET NULL` です。ワインが地域・アペラシオンを所有している関係ではありません。
 - **ワイン―ボトル:** 1対多です。ボトルはワイン ID を必須で持ち、明示された削除ポリシーは `CASCADE` です。ワイン削除によりボトルも削除されるモデル定義なので、通常の在庫除外は行削除でなく `removed_at` を設定する運用を優先してください。
-- **ワイン―ブドウ品種:** 多対多です。`wine_grapes` が関連行と `percentage`、`display_order` を保持します。両側の関連と `GrapeID` の外部キーは GORM モデルにありますが、明示的な削除ポリシーはありません。物理 FK 名・削除動作は稼働 DB で確認してください。
+- **ワイン―ブドウ品種:** 多対多です。`wine_grapes` が関連行と `percentage`、`display_order` を保持します。両側の関連と `GrapeID` の外部キーは GORM モデルにありますが、明示的な削除ポリシーはありません。
 - **日次スナップショット―詳細:** 1対多です。詳細は親の日付を参照し、明示的な削除ポリシーは `CASCADE` です。再作成処理は同日の詳細を置き換えます。
-- **地域の親子:** `parent_id` は nullable な値で、モデルには自己参照関連・FK・削除動作がありません。親地域の存在を DB 制約が保証するとは限りません。
-- **呼称種別の国 ID:** `designation_types.country_id` は nullable な値ですが、モデルに Country 関連と FK がありません。
 
-### 削除時の扱い（モデル上）
+### 実 DB との差分
+
+2026-10-13 に利用者から共有された確認結果に基づく、`cellar_app.public`（PostgreSQL 17.6、`localhost:5432`）のモデルとの差分です。以下に挙げていない対象項目は、確認時点でモデル定義と整合していました。
+
+| 対象 | 差分 |
+|---|---|
+| `regions.parent_id` | GORM モデルに自己参照関連がない一方、実 DB に `regions_parent_id_fkey` がある。参照先は `regions(id)`、削除動作は `NO ACTION`。 |
+| `designation_types.country_id` | GORM モデルに Country 関連がない一方、実 DB に `designation_types_country_id_fkey` がある。参照先は `countries(id)`、削除動作は `CASCADE`。 |
+| `wines` の列 | 現行モデルにない `grape_varieties`、`notes`、`label_image_path`、`quantity`、`price`、`is_favorite`、`created_at`、`updated_at` が実 DB に存在する。モデル外の列であり、未使用・削除対象とは推定しない。 |
+| 物理型 | `wines.reference_price` と `wine_grapes.percentage` は実 DB で `numeric`。対応するモデルフィールドは Go `float64` で、DB 型を明示していない。`designation_types.id` は実 DB で `integer`（モデルは型タグなしの Go `uint`）。 |
+
+### 削除時の扱い（モデル定義上）
 
 | 削除するレコード | モデル上の結果 |
 |---|---|
@@ -134,7 +143,7 @@ ER 図の `integer`、`varchar` 等は明示タグまたは GORM の一般的な
 | Wine | 関連ボトルの `bottles` 行は `CASCADE` |
 | Snapshot | 関連スナップショット詳細は `CASCADE` |
 
-この表は GORM タグ上の定義です。実 DB に追加制約・異なる制約・過去データが存在する可能性を排除できないため、削除前に実 DB の制約と参照件数を確認してください。
+この表は GORM モデルに定義された関連の削除動作です。データ削除やスキーマ変更の前には、対象環境の制約と参照件数を改めて確認してください。
 
 ## データ整合性ルール
 

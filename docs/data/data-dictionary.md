@@ -2,8 +2,8 @@
 
 ## 読み方と注意
 
-- この一覧は `cellar-app-backend/model/model.go` の GORM モデル定義に基づく**コード上の定義**です。実 DB の列・型・NULL・default・索引・制約を接続して調査したものではありません。
-- 「宣言型」は明示された GORM `type`／`size` と Go のフィールド型を示します。明示 DB 型のない Go 型は PostgreSQL Dialector が生成する実型の確認が必要です。Go `int`・`uint`・`float64` を DB の `integer` 等と同一視しません。
+- この一覧は `cellar-app-backend/model/model.go` の GORM モデル定義に基づきます。2026-10-13 に `cellar_app.public`（PostgreSQL 17.6、`localhost:5432`）の列・型・NULL・default、インデックス、制約を照会し、モデル定義との差分のみを本書末尾に記載しています。差分として挙げていない確認対象は、その DB・確認時点でモデル定義と整合していました。この結果は他環境や将来のスキーマを保証するものではありません。
+- 「宣言型」は明示された GORM `type`／`size` と Go のフィールド型を示します。実 DB で差異が確認された物理型は末尾に記載します。
 - nullable は pointer／GORM `not null` 等から読めるモデル上の意図です。主キーは NOT NULL です。タグを持たない値型についても、物理 DB の NULL 可否を断定せず「タグ上未指定」と示します。
 - `default` は GORM タグ上の default です。Go の zero value や DTO の zero value が DB default と同じ意味とは限りません。
 - テーブルごとの列はモデルから導かれる構造を一覧化します。実 DB にモデル外の列やオブジェクトが存在しないという意味ではありません。
@@ -14,7 +14,7 @@
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー。モデルで `type:integer;primaryKey` |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー。モデルで `type:integer;primaryKey` |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | ワイン表示名 |
 | `country_id` | Go `uint`; GORM `integer` | 不可 | タグ指定なし | `countries.id` 参照、明示 `NO ACTION` |
 | `wine_type_id` | Go `uint`; GORM `integer` | 不可 | タグ指定なし | `wine_types.id` 参照、明示 `NO ACTION` |
@@ -38,23 +38,23 @@
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー |
 | `wine_id` | Go `uint`; GORM `integer` | 不可 | タグ指定なし | `wines.id` 参照、明示 `ON DELETE CASCADE` |
 | `is_opened` | `*bool`; GORM `bool` | 可 | `false` | 開封状態。DB default 指定あり |
-| `added_at` | `*time.Time`; GORM `timestamp` | 可 | `CURRENT_TIMESTAMP` | セラー追加日時。タイムゾーン型ではないタグ |
+| `added_at` | `*time.Time`; GORM `timestamp` | 可 | `CURRENT_TIMESTAMP` | セラー追加日時 |
 | `removed_at` | `*time.Time`; GORM の型推論 | 可 | タグ指定なし | NULL は現行在庫、値ありは在庫から除外した状態 |
 | `row_number` | `*int`; GORM `integer` | 可 | タグ指定なし | セラーの行位置。`column_number` と複合 `unique_position` |
 | `column_number` | `*int`; GORM `integer` | 可 | タグ指定なし | セラーの列位置。`row_number` と複合 `unique_position` |
 | `note` | `*string`; GORM `text` | 可 | タグ指定なし | ボトル個別メモ |
 | `Wine` | 関連フィールド | — | — | `wine_id` からの GORM 関連。列ではない |
 
-棚位置が NULL を含む場合の一意性や、除外済みボトルも同じ位置制約の対象となるかは実 DB の索引定義を確認してください。モデルに部分一意インデックスの条件はありません。
+`unique_position` は `row_number` と `column_number` の複合一意インデックスです。PostgreSQL の通常の UNIQUE では NULL を含む組が複数許可され得るため、NULL を含む棚位置の一意性は保証されません。部分条件はモデルに定義されていないため、除外済みボトルもインデックスの対象です。
 
 ## `countries`
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | 国名。一意インデックス |
 | `iso_code` | `*string`; `varchar(2)` | 可 | タグ指定なし | ISO コード。2文字上限。形式や大文字化は未指定 |
 
@@ -62,14 +62,14 @@
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | ワイン種別名。一意インデックス |
 
 ## `regions`
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | 地域名。`parent_id` と複合一意 `regions_name_parent_id_key` |
 | `country_id` | Go `uint`; GORM `integer` | 不可 | タグ指定なし | `countries.id` 参照、明示 `NO ACTION` |
 | `parent_id` | `*uint`; 型タグなし | 可 | タグ指定なし | 親地域 ID 値。自己 FK はモデルに定義されていない |
@@ -81,7 +81,7 @@ PostgreSQL の UNIQUE と NULL の扱いにより、`parent_id IS NULL` の同�
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; GORM `integer` | 不可 | タグ指定なし | 主キー |
+| `id` | Go `uint`; GORM `integer` | 不可 | 明示タグなし | 主キー |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | アペラシオン／呼称名 |
 | `designation_type_id` | Go `*uint`; GORM `integer` | 可 | タグ指定なし | `designation_types.id` 参照、削除時 `SET NULL` |
 | `region_id` | Go `*uint`; GORM `integer` | 可 | タグ指定なし | `regions.id` 参照、削除時 `CASCADE` |
@@ -92,17 +92,17 @@ PostgreSQL の UNIQUE と NULL の扱いにより、`parent_id IS NULL` の同�
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー。実 DB 型は未確認 |
-| `name` | string / `varchar(255)` | GORM の必須タグなし | タグ指定なし | 呼称種別名。モデルには `not null` 指定なし |
-| `code` | string / `varchar(50)` | GORM の必須タグなし | タグ指定なし | 外部呼称コード等。意味・一意性は未指定 |
-| `rank` | Go `int`; 型タグなし | GORM の必須タグなし | タグ指定なし | 順位。単位・値域は未指定 |
+| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし | 主キー |
+| `name` | string / `varchar(255)` | 不可 | タグ指定なし | 呼称種別名 |
+| `code` | string / `varchar(50)` | タグ上未指定 | タグ指定なし | 外部呼称コード等。意味・一意性は未指定 |
+| `rank` | Go `int`; 型タグなし | タグ上未指定 | タグ指定なし | 順位。単位・値域は未指定 |
 | `country_id` | `*uint`; 型タグなし | 可 | タグ指定なし | 国に関係する ID 値。モデルに Country 関連・FK なし |
 
 ## `grapes`
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー。実 DB 型は未確認 |
+| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし | 主キー |
 | `name` | string / `varchar(255)` | 不可 | タグ指定なし | 品種名。一意インデックス |
 
 ## `wine_grapes`
@@ -129,7 +129,7 @@ PostgreSQL の UNIQUE と NULL の扱いにより、`parent_id IS NULL` の同�
 
 | カラム | 宣言型 | NULL | default | 制約／意味・補足 |
 |---|---|---|---|---|
-| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし。GORM の整数主キーは自動採番扱い（実 DDL 未確認） | 主キー。実 DB 型は未確認 |
+| `id` | Go `uint`; 型タグなし | 不可 | 明示タグなし | 主キー |
 | `snapshot_date` | `date` | 不可 | タグ指定なし | 親 `inventory_daily_snapshots.snapshot_date` 参照。日付インデックス |
 | `category_type` | `text` | 不可 | タグ指定なし | CHECK: `wine_type` / `country` / `vintage`。カテゴリインデックス |
 | `category_id` | `*int`; GORM `integer` | 可 | タグ指定なし | カテゴリ ID。カテゴリインデックス |
@@ -137,15 +137,25 @@ PostgreSQL の UNIQUE と NULL の扱いにより、`parent_id IS NULL` の同�
 | `count` | `integer` | 不可 | タグ指定なし | カテゴリ内の在庫件数 |
 | `created_at` | GORM 推論時刻型 | 不可 | `CURRENT_TIMESTAMP` | GORM `autoCreateTime` |
 
-`idx_snapshot_details_category` は `category_type` と `category_id` のタグで同じインデックス名を指定しています。実際の複合インデックス列順・定義は PostgreSQL カタログで確認してください。
-
 ## 型・業務仕様の未確定事項
 
 - `reference_price` の通貨・精度、品種 `percentage` の単位と合計ルール、`display_order` の基点、地域番号の意味・一意性はモデルから確認できません。
 - `DesignationType.CountryID` と `Region.ParentID` は ID 値として存在しますが、モデル上の外部キー関係はありません。
-- pointer ではない `DesignationType.Name`、`Code`、`Rank` には `not null` タグがありません。空文字やゼロの扱いと実 DB NULL 制約は分けて確認してください。
-- タグのない Go 数値型や時刻型の PostgreSQL 物理型、既存 DB の追加列・インデックス・制約は未確認です。
+- `DesignationType.Code` と `Rank` には `not null` タグがありません。空文字やゼロの業務上の扱いはモデルだけでは決まりません。
 - API DTO の数値型・JSON 名・null 処理は DB 型とは別の契約です。詳細は `cellar-app-backend/dto/dto.go` を参照してください。
+
+## 実 DB との差分（2026-10-13）
+
+確認先は `cellar_app.public`（PostgreSQL 17.6、`localhost:5432`）です。次の差分以外の確認対象は、確認時点でモデル定義と整合していました。
+
+| 対象 | 差分 |
+|---|---|
+| `regions.parent_id` | モデルに自己参照関連がないが、実 DB に `regions_parent_id_fkey` がある（`regions(id)`、`NO ACTION`）。 |
+| `designation_types.country_id` | モデルに Country 関連がないが、実 DB に `designation_types_country_id_fkey` がある（`countries(id)`、`CASCADE`）。 |
+| `wines` のモデル外列 | `grape_varieties`、`notes`、`label_image_path`、`quantity`、`price`、`is_favorite`、`created_at`、`updated_at` が実 DB に存在する。既存列であり、未使用・削除対象とは推定しない。 |
+| 物理型 | `wines.reference_price` と `wine_grapes.percentage` は実 DB で `numeric`（モデルは `*float64`、DB 型タグなし）。`designation_types.id` は実 DB で `integer`（モデルは型タグなしの `uint`）。 |
+
+この記録は上記 DB の確認時点に限られます。別環境やスキーマ変更後は差分を再照合してください。
 
 ## 参照
 
