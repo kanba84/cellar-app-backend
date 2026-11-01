@@ -4,16 +4,20 @@
 
 本書はバックエンドの GORM 永続化モデル `cellar-app-backend/model/model.go` と `cellar-app-backend/database/migrate.go` を基準に、エンティティとデータの関係を説明します。カラムの詳細とコード上の型・NULL・制約は[データディクショナリ](./data-dictionary.md)、API の入出力構造は `cellar-app-backend/dto/dto.go` を参照してください。
 
-本書はモデル定義を基準に記載し、2026-10-13 に確認した実 DB との差分のみを「実 DB との差分」節に記載します。同節に記載のない対象項目は、確認した `cellar_app.public` の状態とモデル定義が整合していました。確認結果は当該 DB・当該時点に限られ、他環境や将来のスキーマを保証するものではありません。
+2026-11-01 に作成した産地マスター変更はコード・移行ファイルのみで、稼働 DB には適用していません。実 DB との差分表は2026-10-13時点の基準スキーマと、後日の読み取り専用調査結果を記録したものです。導入前に対象環境のスキーマを再確認してください。
 
 ## 全体像
 
 ```mermaid
 erDiagram
     COUNTRIES ||--o{ REGIONS : contains
+    REGIONS ||--o{ REGIONS : parent
     COUNTRIES ||--o{ WINES : origin
+    COUNTRIES o|--o{ APPELLATIONS : origin
     WINE_TYPES ||--o{ WINES : classifies
     REGIONS o|--o{ APPELLATIONS : includes
+    REGIONS ||--o{ APPELLATION_REGIONS : related
+    APPELLATIONS ||--o{ APPELLATION_REGIONS : related
     DESIGNATION_TYPES o|--o{ APPELLATIONS : classifies
     REGIONS o|--o{ WINES : located_in
     APPELLATIONS o|--o{ WINES : identifies
@@ -25,7 +29,7 @@ erDiagram
     COUNTRIES {
         integer id PK
         varchar name
-        varchar iso_code
+        varchar iso_code UK
     }
     WINE_TYPES {
         integer id PK
@@ -41,14 +45,23 @@ erDiagram
     REGIONS {
         integer id PK
         varchar name
+        varchar code UK
         integer country_id FK
-        uint parent_id
+        bigint parent_id FK
+        integer sort_order
     }
     APPELLATIONS {
         integer id PK
         varchar name
+        varchar code UK
+        integer country_id FK
         integer designation_type_id FK
         integer region_id FK
+        integer sort_order
+    }
+    APPELLATION_REGIONS {
+        integer appellation_id PK, FK
+        integer region_id PK, FK
     }
     WINES {
         integer id PK
@@ -101,8 +114,9 @@ ER 図はモデル定義を基準にした図です。実 DB にのみ存在す�
 | `countries` | 国マスター | 地域とワインの必須参照先 |
 | `wine_types` | ワイン種別マスター | ワインの必須参照先 |
 | `designation_types` | 呼称・格付け種別マスター | アペラシオンから任意参照 |
-| `regions` | 国に属する地域 | 国を必須参照。`parent_id` による階層値を保持 |
-| `appellations` | 地域に関連付ける呼称 | 地域と呼称種別をそれぞれ任意参照 |
+| `regions` | 国に属する地域 | 国を必須参照。`parent_id` による階層、code、表示順を保持 |
+| `appellations` | 国の原産地呼称 | Country、任意の制度分類、互換用単一Region、複数Region関連を保持 |
+| `appellation_regions` | AppellationとRegionの関連 | Appellationが複数Regionにまたがる関連を保持 |
 | `wines` | ワインそのものの情報 | 国とワイン種別を必須参照。地域とアペラシオンは任意 |
 | `bottles` | 個々のボトル・セラー在庫 | ワインを必須参照。位置、開封、入庫・除外情報を保持 |
 | `grapes` | ブドウ品種マスター | `wine_grapes` 経由でワインと関連 |
@@ -113,7 +127,9 @@ ER 図はモデル定義を基準にした図です。実 DB にのみ存在す�
 ## リレーション、所有、ライフサイクル
 
 - **国―地域、国―ワイン、ワイン種別―ワイン:** いずれも1対多です。`regions.country_id`、`wines.country_id`、`wines.wine_type_id` は必須の FK としてモデルに定義されています。親の削除ポリシーは `NO ACTION` です。
-- **地域―アペラシオン:** アペラシオンは地域を任意参照します。モデルの FK 削除ポリシーは `CASCADE` で、地域を削除すると関連するアペラシオンを削除する定義です。
+- **Region階層:** `Region.ParentID` は同じRegionテーブルへの任意参照です。FK削除ポリシーは `NO ACTION` で、親Regionを参照する子Regionがあれば削除を防ぎます。
+- **地域―アペラシオン:** 既存API互換の `appellations.region_id` は任意参照のまま維持し、削除ポリシーを `RESTRICT` とします。`appellation_regions` は複数Regionとの関連を表し、関連側の削除でJoin行のみを削除する設計です。単一Region列は段階移行中に維持します。
+- **国―アペラシオン:** `country_id` は任意参照として導入し、既存行は従来Regionの国から移行時に補完します。APIの既存登録経路との互換性を確認後、必須化は別途判断します。
 - **呼称種別―アペラシオン:** アペラシオン側の参照は任意で、呼称種別削除時のポリシーは `SET NULL` です。
 - **地域／アペラシオン―ワイン:** ワイン側の参照は任意です。地域参照は `NO ACTION`、アペラシオン参照は `SET NULL` です。ワインが地域・アペラシオンを所有している関係ではありません。
 - **ワイン―ボトル:** 1対多です。ボトルはワイン ID を必須で持ち、明示された削除ポリシーは `CASCADE` です。ワイン削除によりボトルも削除されるモデル定義なので、通常の在庫除外は行削除でなく `removed_at` を設定する運用を優先してください。
@@ -122,12 +138,13 @@ ER 図はモデル定義を基準にした図です。実 DB にのみ存在す�
 
 ### 実 DB との差分
 
-2026-10-13 に利用者から共有された確認結果に基づく、`cellar_app.public`（PostgreSQL 17.6、`localhost:5432`）のモデルとの差分です。以下に挙げていない対象項目は、確認時点でモデル定義と整合していました。
+2026-10-13 に利用者から共有された確認結果に基づく、対象DBのpublic schema（PostgreSQL 17.6）のモデルとの差分です。以下に挙げていない対象項目は、確認時点でモデル定義と整合していました。
 
 | 対象 | 差分 |
 |---|---|
-| `regions.parent_id` | GORM モデルに自己参照関連がない一方、実 DB に `regions_parent_id_fkey` がある。参照先は `regions(id)`、削除動作は `NO ACTION`。 |
-| `designation_types.country_id` | GORM モデルに Country 関連がない一方、実 DB に `designation_types_country_id_fkey` がある。参照先は `countries(id)`、削除動作は `CASCADE`。 |
+| 産地マスターの移行状態 | `20261101_wine_geography_master_data.sql` は未適用。code、sort_order、Appellation country、複数Region関連、およびRegion削除制約の変更は稼働DBにまだ存在しない。 |
+| `regions.parent_id` | 基準実DBには `regions_parent_id_fkey` があり、参照先は `regions(id)`、削除動作は `NO ACTION`。現行GORMモデルにも自己参照関連を追加済み。 |
+| `designation_types.country_id` | 基準実DBには `designation_types_country_id_fkey` があり、参照先は `countries(id)`、削除動作は `CASCADE`。現行GORMモデルにもCountry関連を定義済み。 |
 | `wines` の列 | 現行モデルにない `grape_varieties`、`notes`、`label_image_path`、`quantity`、`price`、`is_favorite`、`created_at`、`updated_at` が実 DB に存在する。モデル外の列であり、未使用・削除対象とは推定しない。 |
 | 物理型 | `wines.reference_price` と `wine_grapes.percentage` は実 DB で `numeric`。対応するモデルフィールドは Go `float64` で、DB 型を明示していない。`designation_types.id` は実 DB で `integer`（モデルは型タグなしの Go `uint`）。 |
 
@@ -137,7 +154,7 @@ ER 図はモデル定義を基準にした図です。実 DB にのみ存在す�
 |---|---|
 | Country | 地域またはワインが参照している場合は `NO ACTION` により削除できない |
 | WineType | ワインが参照している場合は `NO ACTION` |
-| Region | ワインが参照している場合は `NO ACTION`。地域のアペラシオンは `CASCADE` |
+| Region | 親子Region、Wine、legacy Appellation参照があれば削除不可。多対多関連行のみ削除対象 |
 | DesignationType | 参照するアペラシオンの `designation_type_id` は `SET NULL` |
 | Appellation | 参照するワインの `appellation_id` は `SET NULL` |
 | Wine | 関連ボトルの `bottles` 行は `CASCADE` |
@@ -152,7 +169,8 @@ ER 図はモデル定義を基準にした図です。実 DB にのみ存在す�
 - ワイン名、国 ID、ワイン種別 ID、地域名・国 ID、アペラシオン名、国名、ワイン種別名、ブドウ名などの必須性・一意性。
 - `wines.vintage` の CHECK 条件：1800 年以上、かつ実行時点の現在年以下。
 - `inventory_daily_snapshot_details.category_type` の CHECK 条件：`wine_type`、`country`、`vintage` のいずれか。
-- `regions` の `(name, parent_id)` 複合一意インデックス。
+- `regions` の `(name, parent_id)` 複合一意インデックス、および新しいRegion codeの一意インデックス。
+- `countries.iso_code`、`appellations.code`、`designation_types(code, country_id)` の一意インデックス。移行前に実データ重複を確認する。
 - `bottles` の `(row_number, column_number)` 複合一意インデックス。PostgreSQL の通常の UNIQUE では NULL を含む組が複数許可され得ます。部分一意インデックスのタグ指定はありません。
 - スナップショット詳細には日付・カテゴリ検索用インデックスが定義されています。複合インデックスのグループ名は `idx_snapshot_details_category` です。
 
