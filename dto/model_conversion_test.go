@@ -54,6 +54,38 @@ func TestRegionRequestOmitsUnprovidedCountryAssociation(t *testing.T) {
 	}
 }
 
+func TestAppellationDTOConvertsCountryAndMultipleRegions(t *testing.T) {
+	code := "FR:AOC:EXAMPLE"
+	countryID := uint(1)
+	regionID := uint(3)
+	parentID := uint(1)
+	request := AppellationDTO{
+		ID:        9,
+		Name:      "Example AOC",
+		Code:      &code,
+		CountryID: &countryID,
+		RegionID:  &regionID,
+		Regions: []RegionDTO{
+			{ID: 3, Name: "Médoc", CountryID: 1, ParentID: &parentID},
+		},
+		SortOrder: 4,
+	}
+
+	persisted := request.ToModel()
+	if persisted.Code == nil || *persisted.Code != code || persisted.CountryID == nil ||
+		*persisted.CountryID != countryID || len(persisted.Regions) != 1 ||
+		persisted.Regions[0].ID != 3 || persisted.SortOrder != 4 {
+		t.Fatalf("request conversion lost appellation fields: %#v", persisted)
+	}
+
+	response := AppellationFromModel(persisted)
+	if len(response.Regions) != 1 || response.Regions[0].Name != "Médoc" ||
+		response.Code == nil || *response.Code != code || response.CountryID == nil ||
+		*response.CountryID != countryID {
+		t.Fatalf("response conversion lost appellation fields: %#v", response)
+	}
+}
+
 func TestSnapshotDTOConversion(t *testing.T) {
 	var snapshot model.InventoryDailySnapshot
 	snapshot.Details = []model.InventoryDailySnapshotDetail{{ID: 1, CategoryType: "country", Count: 2}}

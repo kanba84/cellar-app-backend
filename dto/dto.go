@@ -104,18 +104,25 @@ type CountryDTO struct {
 type RegionDTO struct {
 	ID        uint       `json:"id"`
 	Name      string     `json:"name"`
+	Code      *string    `json:"code,omitempty"`
 	CountryID uint       `json:"country_id"`
 	Country   CountryDTO `json:"country,omitempty"`
 	ParentID  *uint      `json:"parent_id"`
+	SortOrder int        `json:"sort_order"`
 }
 
 type AppellationDTO struct {
 	ID                uint                `json:"id"`
 	Name              string              `json:"name"`
+	Code              *string             `json:"code,omitempty"`
+	CountryID         *uint               `json:"country_id,omitempty"`
+	Country           *CountryDTO         `json:"country,omitempty"`
 	DesignationTypeID *uint               `json:"designation_type_id"`
 	DesignationType   *DesignationTypeDTO `json:"designation_type,omitempty"`
 	RegionID          *uint               `json:"region_id"`
 	Region            *RegionDTO          `json:"region,omitempty"`
+	Regions           []RegionDTO         `json:"regions,omitempty"`
+	SortOrder         int                 `json:"sort_order"`
 }
 
 type DesignationTypeDTO struct {
