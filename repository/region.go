@@ -19,7 +19,7 @@ func (r *RegionRepository) List() ([]model.Region, error) {
 
 	err := r.db.
 		Preload("Country").
-		Order("id").
+		Order("sort_order, id").
 		Find(&regions).Error
 
 	return regions, err

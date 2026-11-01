@@ -48,26 +48,35 @@ type Country struct {
 type Region struct {
 	ID        uint    `gorm:"type:integer;primaryKey"`
 	Name      string  `gorm:"size:255;not null;uniqueIndex:regions_name_parent_id_key"`
+	Code      *string `gorm:"size:64;uniqueIndex:idx_regions_code"`
 	CountryID uint    `gorm:"type:integer;not null"`
 	Country   Country `gorm:"foreignKey:CountryID;constraint:regions_country_id_fkey,OnDelete:NO ACTION"`
-	ParentID  *uint   `gorm:"uniqueIndex:regions_name_parent_id_key"`
+	ParentID  *uint   `gorm:"type:bigint;uniqueIndex:regions_name_parent_id_key"`
+	Parent    *Region `gorm:"foreignKey:ParentID;constraint:regions_parent_id_fkey,OnDelete:NO ACTION"`
+	SortOrder int     `gorm:"type:integer;not null;default:0"`
 }
 
 type Appellation struct {
 	ID                uint             `gorm:"type:integer;primaryKey"`
 	Name              string           `gorm:"size:255;not null"`
+	Code              *string          `gorm:"size:100;uniqueIndex:idx_appellations_code"`
+	CountryID         *uint            `gorm:"type:integer;index:idx_appellations_country_id"`
+	Country           *Country         `gorm:"foreignKey:CountryID;constraint:appellations_country_id_fkey,OnDelete:NO ACTION"`
 	DesignationTypeID *uint            `gorm:"type:integer"`
 	DesignationType   *DesignationType `gorm:"foreignKey:DesignationTypeID;constraint:appellations_designation_type_id_fkey,OnDelete:SET NULL"`
 	RegionID          *uint            `gorm:"type:integer"`
-	Region            *Region          `gorm:"foreignKey:RegionID;constraint:appellations_region_id_fkey,OnDelete:CASCADE"`
+	Region            *Region          `gorm:"foreignKey:RegionID;constraint:appellations_region_id_fkey,OnDelete:RESTRICT"`
+	Regions           []Region         `gorm:"many2many:appellation_regions"`
+	SortOrder         int              `gorm:"type:integer;not null;default:0"`
 }
 
 type DesignationType struct {
 	ID        uint   `gorm:"type:integer;primaryKey"`
 	Name      string `gorm:"size:255;not null"`
-	Code      string `gorm:"size:50"`
+	Code      string `gorm:"size:50;uniqueIndex:idx_designation_types_country_code"`
 	Rank      int
-	CountryID *uint
+	CountryID *uint    `gorm:"type:bigint;uniqueIndex:idx_designation_types_country_code"`
+	Country   *Country `gorm:"foreignKey:CountryID;constraint:designation_types_country_id_fkey,OnDelete:CASCADE"`
 }
 
 type InventoryDailySnapshot struct {

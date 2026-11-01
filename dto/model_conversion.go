@@ -139,9 +139,11 @@ func RegionFromModel(region model.Region) RegionDTO {
 	return RegionDTO{
 		ID:        region.ID,
 		Name:      region.Name,
+		Code:      region.Code,
 		CountryID: region.CountryID,
 		Country:   CountryFromModel(region.Country),
 		ParentID:  region.ParentID,
+		SortOrder: region.SortOrder,
 	}
 }
 
@@ -149,8 +151,10 @@ func (d RegionDTO) ToModel() model.Region {
 	region := model.Region{
 		ID:        d.ID,
 		Name:      d.Name,
+		Code:      d.Code,
 		CountryID: d.CountryID,
 		ParentID:  d.ParentID,
+		SortOrder: d.SortOrder,
 	}
 	if d.Country.ID != 0 || d.Country.Name != "" || d.Country.ISOCode != "" {
 		region.Country = d.Country.ToModel()
@@ -162,8 +166,15 @@ func AppellationFromModel(appellation model.Appellation) AppellationDTO {
 	result := AppellationDTO{
 		ID:                appellation.ID,
 		Name:              appellation.Name,
+		Code:              appellation.Code,
+		CountryID:         appellation.CountryID,
 		DesignationTypeID: appellation.DesignationTypeID,
 		RegionID:          appellation.RegionID,
+		SortOrder:         appellation.SortOrder,
+	}
+	if appellation.Country != nil {
+		country := CountryFromModel(*appellation.Country)
+		result.Country = &country
 	}
 	if appellation.DesignationType != nil {
 		designationType := DesignationTypeFromModel(*appellation.DesignationType)
@@ -173,6 +184,9 @@ func AppellationFromModel(appellation model.Appellation) AppellationDTO {
 		region := RegionFromModel(*appellation.Region)
 		result.Region = &region
 	}
+	for _, region := range appellation.Regions {
+		result.Regions = append(result.Regions, RegionFromModel(region))
+	}
 	return result
 }
 
@@ -180,8 +194,15 @@ func (d AppellationDTO) ToModel() model.Appellation {
 	result := model.Appellation{
 		ID:                d.ID,
 		Name:              d.Name,
+		Code:              d.Code,
+		CountryID:         d.CountryID,
 		DesignationTypeID: d.DesignationTypeID,
 		RegionID:          d.RegionID,
+		SortOrder:         d.SortOrder,
+	}
+	if d.Country != nil {
+		country := d.Country.ToModel()
+		result.Country = &country
 	}
 	if d.DesignationType != nil {
 		designationType := d.DesignationType.ToModel()
@@ -190,6 +211,9 @@ func (d AppellationDTO) ToModel() model.Appellation {
 	if d.Region != nil {
 		region := d.Region.ToModel()
 		result.Region = &region
+	}
+	for _, region := range d.Regions {
+		result.Regions = append(result.Regions, region.ToModel())
 	}
 	return result
 }

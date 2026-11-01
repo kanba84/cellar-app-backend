@@ -72,7 +72,8 @@ func TestPersistentModelColumnTypesAndNullability(t *testing.T) {
 		{name: "timestamp without timezone bottle removed", model: &Bottle{}, field: "RemovedAt", dataType: "timestamp", notNull: false},
 		{name: "text bottle note", model: &Bottle{}, field: "Note", dataType: "text", notNull: false},
 		{name: "nullable country ISO", model: &Country{}, field: "ISOCode", dataType: "string", notNull: false, size: 2},
-		{name: "nullable designation country", model: &DesignationType{}, field: "CountryID", dataType: "uint", notNull: false},
+		{name: "nullable designation country", model: &DesignationType{}, field: "CountryID", dataType: "integer", notNull: false, size: 64},
+		{name: "nullable region parent", model: &Region{}, field: "ParentID", dataType: "integer", notNull: false, size: 64},
 		{name: "nullable appellation integer designation id", model: &Appellation{}, field: "DesignationTypeID", dataType: "integer", notNull: false},
 		{name: "nullable appellation integer region id", model: &Appellation{}, field: "RegionID", dataType: "integer", notNull: false},
 		{name: "region integer country id", model: &Region{}, field: "CountryID", dataType: "integer", notNull: true},
@@ -122,8 +123,10 @@ func TestPersistentModelUsesExistingForeignKeyNames(t *testing.T) {
 		{name: "wine region", model: &Wine{}, relationship: "Region", constraint: "wines_region_id_fkey", onDelete: "NO ACTION"},
 		{name: "wine appellation", model: &Wine{}, relationship: "Appellation", constraint: "wines_appellation_id_fkey", onDelete: "SET NULL"},
 		{name: "region country", model: &Region{}, relationship: "Country", constraint: "regions_country_id_fkey", onDelete: "NO ACTION"},
+		{name: "region parent", model: &Region{}, relationship: "Parent", constraint: "regions_parent_id_fkey", onDelete: "NO ACTION"},
+		{name: "appellation country", model: &Appellation{}, relationship: "Country", constraint: "appellations_country_id_fkey", onDelete: "NO ACTION"},
 		{name: "appellation designation type", model: &Appellation{}, relationship: "DesignationType", constraint: "appellations_designation_type_id_fkey", onDelete: "SET NULL"},
-		{name: "appellation region", model: &Appellation{}, relationship: "Region", constraint: "appellations_region_id_fkey", onDelete: "CASCADE"},
+		{name: "appellation region", model: &Appellation{}, relationship: "Region", constraint: "appellations_region_id_fkey", onDelete: "RESTRICT"},
 	}
 
 	cache := &sync.Map{}
@@ -148,5 +151,19 @@ func TestPersistentModelUsesExistingForeignKeyNames(t *testing.T) {
 				t.Errorf("on delete = %q, want %q", constraint.OnDelete, test.onDelete)
 			}
 		})
+	}
+}
+
+func TestAppellationRegionsUseJoinTable(t *testing.T) {
+	parsed, err := schema.Parse(&Appellation{}, &sync.Map{}, schema.NamingStrategy{})
+	if err != nil {
+		t.Fatalf("parse appellation schema: %v", err)
+	}
+	relationship := parsed.Relationships.Relations["Regions"]
+	if relationship == nil || relationship.JoinTable == nil {
+		t.Fatal("appellation regions many-to-many relationship was not parsed")
+	}
+	if relationship.JoinTable.Table != "appellation_regions" {
+		t.Fatalf("join table = %q, want %q", relationship.JoinTable.Table, "appellation_regions")
 	}
 }
