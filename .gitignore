@@ -2,3 +2,6 @@
 cellar-app
 cellar-app-mac
 ssl/
+
+# Local-only investigation documents
+docs/research-local/
