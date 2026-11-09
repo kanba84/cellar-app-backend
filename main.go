@@ -4,6 +4,7 @@ import (
 	"cellar-app/database"
 	"cellar-app/handler"
 	"cellar-app/llm"
+	"cellar-app/mcpserver"
 	"cellar-app/service"
 	"log"
 	"os"
@@ -33,7 +34,8 @@ func main() {
 	}
 
 	h := &handler.Handler{Service: svc}
-	r := SetupRouter(h)
+	mcpHandler := mcpserver.NewHTTPHandler(svc)
+	r := SetupRouter(h, mcpHandler)
 
 	certFile := os.Getenv("SSL_CERT_FILE")
 	keyFile := os.Getenv("SSL_KEY_FILE")

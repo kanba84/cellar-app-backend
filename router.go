@@ -2,12 +2,14 @@ package main
 
 import (
 	"cellar-app/handler"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(h *handler.Handler) *gin.Engine {
+func SetupRouter(h *handler.Handler, mcpHandler http.Handler) *gin.Engine {
 	r := gin.Default()
+	r.Any("/mcp", gin.WrapH(mcpHandler))
 	// ルーティング設定
 	r.GET("/wines", h.ListWines)
 	r.GET("/wines/:id", h.GetWine)
