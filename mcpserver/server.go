@@ -67,7 +67,10 @@ func NewHTTPHandler(reader ReadOnlyService) http.Handler {
 
 	return mcp.NewStreamableHTTPHandler(
 		func(*http.Request) *mcp.Server { return server },
-		nil,
+		// Cloudflare Tunnel connects to localhost while preserving the public
+		// Host header. Cloudflare Access JWT validation is enforced separately
+		// by the /mcp route middleware.
+		&mcp.StreamableHTTPOptions{DisableLocalhostProtection: true},
 	)
 }
 
