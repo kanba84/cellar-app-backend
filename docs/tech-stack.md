@@ -108,10 +108,15 @@ PostgreSQL
 | `DB_NAME` | データベース名 | `cellar_app` |
 | `SSL_CERT_FILE` | HTTPS 証明書ファイルのパス | 未指定時は HTTP（8080） |
 | `SSL_KEY_FILE` | HTTPS 秘密鍵ファイルのパス | 証明書・鍵の両方が設定された場合に HTTPS（8443） |
+| `CLOUDFLARE_ACCESS_ISSUER` | Cloudflare Access JWT の期待するIssuer | 必須。未設定・不正時は起動エラー |
+| `CLOUDFLARE_ACCESS_AUD` | JWTのAudienceに含まれるApplication Audience (AUD) | 必須。未設定時は起動エラー |
+| `CLOUDFLARE_ACCESS_JWKS_URL` | Cloudflare Access公開鍵(JWKS)の取得先 | 省略時はIssuerの`/cdn-cgi/access/certs` |
 | `LLM_PROVIDER` | LLM プロバイダー | `gemini`。その他の値は未対応 |
 | `GEMINI_API_KEY` | Gemini API キー | 必須。未設定時はプロバイダー初期化エラー |
 | `GEMINI_MODEL` | Gemini モデル名 | `gemini-2.5-flash-lite` |
 | `IMAGE_OUTPUT_DIR` | 画像出力先 | `./` |
+
+`/mcp` ではCloudflare Accessが付与する `Cf-Access-Jwt-Assertion` を検証します。署名はRS256のみ許可し、Issuer、Audience、`exp`、`nbf` を検証します。JWKSは5分間キャッシュされ、未知の`kid`や期限切れキャッシュでは再取得します。鍵取得失敗時は認証を拒否します。Zero TrustのTeam domainをIssuerに、AccessアプリケーションのApplication Audience (AUD) TagをAudience設定に指定してください。`/health` および一般APIには適用されません。認証ログにはmethod、path、失敗理由分類のみを記録し、JWT内容は記録しません。
 
 注意事項:
 

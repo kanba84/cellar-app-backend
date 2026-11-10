@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cellar-app/cloudflareaccess"
 	"cellar-app/database"
 	"cellar-app/handler"
 	"cellar-app/llm"
@@ -11,6 +12,15 @@ import (
 )
 
 func main() {
+	accessConfig, err := cloudflareaccess.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Cloudflare Access configuration error: %v", err)
+	}
+	accessMiddleware, err := cloudflareaccess.NewMiddleware(accessConfig, nil)
+	if err != nil {
+		log.Fatalf("Cloudflare Access middleware initialization failed: %v", err)
+	}
+
 	db, err := database.Connect()
 	if err != nil {
 		log.Fatalf("DB接続に失敗しました: %v", err)
@@ -35,7 +45,7 @@ func main() {
 
 	h := &handler.Handler{Service: svc}
 	mcpHandler := mcpserver.NewHTTPHandler(svc)
-	r := SetupRouter(h, mcpHandler)
+	r := SetupRouter(h, mcpHandler, accessMiddleware)
 
 	certFile := os.Getenv("SSL_CERT_FILE")
 	keyFile := os.Getenv("SSL_KEY_FILE")

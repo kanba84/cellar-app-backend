@@ -7,9 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(h *handler.Handler, mcpHandler http.Handler) *gin.Engine {
+func SetupRouter(h *handler.Handler, mcpHandler http.Handler, mcpAuth gin.HandlerFunc) *gin.Engine {
 	r := gin.Default()
-	r.Any("/mcp", gin.WrapH(mcpHandler))
+	r.Any("/mcp", mcpAuth, gin.WrapH(mcpHandler))
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	// ルーティング設定
 	r.GET("/wines", h.ListWines)
 	r.GET("/wines/:id", h.GetWine)

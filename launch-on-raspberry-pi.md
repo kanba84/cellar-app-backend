@@ -33,6 +33,10 @@ Environment=GIN_MODE=release
 Environment=DB_PASSWORD=<REPLACE_HERE>
 Environment=SSL_CERT_FILE=<REPLACE_HERE>
 Environment=SSL_KEY_FILE=<REPLACE_HERE>
+Environment=CLOUDFLARE_ACCESS_ISSUER=https://<team-name>.cloudflareaccess.com
+Environment=CLOUDFLARE_ACCESS_AUD=<APPLICATION_AUDIENCE_TAG>
+# Optional; defaults to <issuer>/cdn-cgi/access/certs
+# Environment=CLOUDFLARE_ACCESS_JWKS_URL=https://<team-name>.cloudflareaccess.com/cdn-cgi/access/certs
 
 [Install]
 WantedBy=multi-user.target

@@ -87,7 +87,19 @@ backend と同じプロセス・HTTP サーバーで、公式 Go SDK の Streama
 
 List tool は現在のサービス動作どおり全件を返し、暗黙の件数制限やページングはありません。ID は `1` から `2147483647`、日数は `0` または `1` から `3650` を指定できます。日数 `0` または省略時は既存サービスの 30 日既定値を使います。日次スナップショットの日付は `YYYY-MM-DD` 形式です。LLM 情報取得、作成・更新・削除、アップロード、スナップショット生成は公開しません。
 
-MCP endpoint に専用の認証は追加していません。LAN から backend に直接到達できるクライアントを前提とし、接続可能なネットワークを適切に制限してください。
+MCP endpoint はCloudflare Access JWTで保護されます。Cloudflare Accessを経由せずbackendへ直接接続する `/mcp` リクエストは、Assertionがないため401になります。
+
+### Cloudflare Access JWT 検証
+
+`/mcp` は Cloudflare Access がオリジンリクエストに付与する `Cf-Access-Jwt-Assertion` を検証します。クライアントが送るアクセストークンではなく、このAssertionのRS256署名、Issuer、Audience、`exp`、`nbf` を確認します。公開鍵はJWKSから取得し、5分間キャッシュします。未知の`kid`またはキャッシュ期限切れ時はJWKSを再取得し、鍵を取得できない場合は認証を拒否します。設定不足・不正の場合、アプリケーションは起動しません。
+
+必須の環境変数:
+
+- `CLOUDFLARE_ACCESS_ISSUER`: Cloudflare Access team domain（例: `https://topgrove.cloudflareaccess.com`）。Zero TrustダッシュボードのTeam domainと一致させます。
+- `CLOUDFLARE_ACCESS_AUD`: 対象AccessアプリケーションのApplication Audience (AUD) Tag。
+- `CLOUDFLARE_ACCESS_JWKS_URL`: 任意。公開鍵URLを上書きします。未設定時はIssuerに`/cdn-cgi/access/certs`を付けたURLを使用します。
+
+ローカル開発では、Cloudflare Zero Trust側のTeam domainとApplication Audienceを環境変数に設定し、Cloudflare Accessで保護されたURL経由でMCP接続を試してください。Composeの場合は `docker-compose.yml` を実行するディレクトリの `.env` にIssuerとAUDを設定します。backendへ直接接続する `/mcp` は意図的に認証を迂回できません。単体テストは外部ネットワークを使わず、テスト内で生成したRSA鍵を利用します。`/health` と一般APIにはこの認証を適用しません。認証失敗時はアプリケーションログのHTTP method、path、失敗理由分類を確認してください。JWTやそのクレームはログに出力されません。
 
 ## ライセンス
 
