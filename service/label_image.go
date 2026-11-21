@@ -2,13 +2,16 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/disintegration/imaging"
 	"github.com/rwcarlsen/goexif/exif"
@@ -35,8 +38,27 @@ func (s *Service) UploadLabelImage(file *multipart.FileHeader, outputFileName st
 		return fmt.Errorf("failed to read uploaded file: %w", err)
 	}
 
-	// EXIF情報をもとに回転補正
-	img, err := autoRotateByExif(bytes.NewReader(buf))
+	return s.SaveLabelImageBytes(buf, outputFileName, "")
+}
+
+const MaxLabelImageBytes = 5 * 1024 * 1024
+
+func (s *Service) SaveLabelImageBytes(data []byte, outputFileName, declaredMIME string) error {
+	if len(data) == 0 || (declaredMIME != "" && len(data) > MaxLabelImageBytes) {
+		return errors.New("label image must be between 1 byte and 5 MiB")
+	}
+	if outputFileName == "" || filepath.Base(outputFileName) != outputFileName || strings.ContainsAny(outputFileName, `/\`) {
+		return errors.New("invalid generated label image filename")
+	}
+	detectedMIME := http.DetectContentType(data)
+	if declaredMIME != "" && detectedMIME != "image/jpeg" && detectedMIME != "image/png" {
+		return errors.New("label image must be a JPEG or PNG image")
+	}
+	if declaredMIME != "" && declaredMIME != detectedMIME {
+		return errors.New("declared image MIME type does not match image content")
+	}
+
+	img, err := autoRotateByExif(bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to auto-rotate image: %w", err)
 	}
@@ -46,15 +68,19 @@ func (s *Service) UploadLabelImage(file *multipart.FileHeader, outputFileName st
 
 	// 保存先パスを作成
 	outPath := filepath.Join(IMAGE_OUTPUT_DIR, outputFileName)
-	outFile, err := os.Create(outPath)
+	outFile, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
 
-	// JPEG形式で保存（品質85で十分）
 	if err := jpeg.Encode(outFile, thumbnail, &jpeg.Options{Quality: 85}); err != nil {
+		outFile.Close()
+		os.Remove(outPath)
 		return fmt.Errorf("failed to encode and save thumbnail: %w", err)
+	}
+	if err := outFile.Close(); err != nil {
+		os.Remove(outPath)
+		return fmt.Errorf("failed to close label image: %w", err)
 	}
 
 	return nil

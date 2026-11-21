@@ -34,6 +34,14 @@ type Bottle struct {
 	Note         *string    `gorm:"type:text"`
 }
 
+type MCPRegistration struct {
+	IdempotencyKey string    `gorm:"size:128;primaryKey"`
+	RequestHash    string    `gorm:"size:64;not null"`
+	WineID         uint      `gorm:"type:integer;not null"`
+	BottleID       uint      `gorm:"type:integer;not null"`
+	CreatedAt      time.Time `gorm:"not null;autoCreateTime"`
+}
+
 type WineType struct {
 	ID   uint   `gorm:"type:integer;primaryKey"`
 	Name string `gorm:"size:255;not null;uniqueIndex"`

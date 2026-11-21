@@ -19,5 +19,6 @@ func Migrate(db *gorm.DB) error {
 		&model.WineGrape{},
 		&model.InventoryDailySnapshot{},
 		&model.InventoryDailySnapshotDetail{},
+		&model.MCPRegistration{},
 	)
 }

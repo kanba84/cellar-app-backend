@@ -44,7 +44,7 @@ func main() {
 	}
 
 	h := &handler.Handler{Service: svc}
-	mcpHandler := mcpserver.NewHTTPHandler(svc)
+	mcpHandler := mcpserver.NewHTTPHandler(svc, svc)
 	r := SetupRouter(h, mcpHandler, accessMiddleware)
 
 	certFile := os.Getenv("SSL_CERT_FILE")

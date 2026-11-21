@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # 1. Build the application for Linux ARM
 echo "(1/5) Building the application for Linux ARM..."
